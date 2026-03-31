@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Baja Wave Rider</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #0A0E27; touch-action: none; font-family: 'Inter', sans-serif; }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 10;
+    pointer-events: none; padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .hud-box {
+    background: rgba(10, 14, 39, 0.55);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(99, 255, 224, 0.18);
+    border-radius: 14px; padding: 10px 18px;
+    box-shadow: 0 0 20px rgba(99, 255, 224, 0.08);
+  }
+  .hud-label {
+    font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700;
+    color: #63FFE0; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 2px;
+  }
+  .hud-value {
+    font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900;
+    color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,0.5);
+  }
+  .hud-value.speed { color: #FF6B35; text-shadow: 0 0 12px rgba(255,107,53,0.5); }
+  #brandTag {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    pointer-events: none; font-family: 'Orbitron', sans-serif; font-size: 11px;
+    font-weight: 700; color: #63FFE0; letter-spacing: 3px;
+    text-shadow: 0 0 18px rgba(99,255,224,0.6); opacity: 0.7;
+  }
+
+  #overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(10, 14, 39, 0.92); color: #F0F8FF; text-align: center;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h1 {
+    font-family: 'Orbitron', sans-serif; font-size: 48px; font-weight: 900;
+    color: #63FFE0; text-shadow: 0 0 30px #63FFE0, 0 0 60px rgba(99,255,224,0.3);
+    margin-bottom: 6px;
+  }
+  #overlay h2 {
+    font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 400;
+    color: #FF6B35; letter-spacing: 4px; margin-bottom: 24px;
+  }
+  #overlay p { font-size: 15px; color: #8892b0; margin: 4px 0; }
+  .score-display {
+    font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900;
+    color: #FFD700; text-shadow: 0 0 20px rgba(255,215,0,0.5); margin: 14px 0;
+  }
+  #overlay button {
+    margin-top: 22px; padding: 16px 48px; font-family: 'Orbitron', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(135deg, #63FFE0, #8B5CF6); color: #0A0E27;
+    border: none; border-radius: 50px; cursor: pointer; pointer-events: all;
+    box-shadow: 0 0 30px rgba(99,255,224,0.35); transition: transform 0.15s, box-shadow 0.15s;
+  }
+  #overlay button:hover { transform: scale(1.06); box-shadow: 0 0 40px rgba(99,255,224,0.5); }
+  .controls-box {
+    margin-top: 20px; font-size: 12px; color: #5a6080; line-height: 2;
+    background: rgba(99,255,224,0.04); border: 1px solid rgba(99,255,224,0.1);
+    border-radius: 12px; padding: 12px 24px;
+  }
+  .controls-box kbd {
+    background: rgba(99,255,224,0.12); color: #63FFE0; padding: 2px 8px;
+    border-radius: 4px; font-family: 'Orbitron', sans-serif; font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="brandTag">BAJA WAVE RIDER</div>
+
+<div id="hud">
+  <div class="hud-box">
+    <div class="hud-label">Distance</div>
+    <div class="hud-value" id="distVal">0 m</div>
+  </div>
+  <div class="hud-box">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="scoreVal">0</div>
+  </div>
+  <div class="hud-box">
+    <div class="hud-label">Speed</div>
+    <div class="hud-value speed" id="speedVal">1.0x</div>
+  </div>
+</div>
+
+<div id="overlay">
+  <h1>Baja Wave Rider</h1>
+  <h2>SURF THE CRESTS</h2>
+  <div id="finalScore" class="score-display"></div>
+  <p id="finalDist"></p>
+  <button id="startBtn">START SURFING</button>
+  <div class="controls-box">
+    <kbd>SPACE</kbd> / <kbd>TAB</kbd> / <kbd>UP</kbd> Jump on waves<br>
+    Higher on wave = higher jump &nbsp; | &nbsp; Hold = full height &nbsp; | &nbsp; Touch supported
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ============================================================
+// BAJA WAVE RIDER - Crest-Jump Physics Edition
+// Pure Canvas 2D - no dependencies
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  WAVE_BASELINE = H * 0.93;
+  // Physics scaled so jump reaches 75% of screen height
+  const jumpHeight = H * 0.75;
+  const JUMP_TIME = 1.4; // total seconds in air
+  GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
+  JUMP_VEL = GRAVITY * JUMP_TIME / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Brand Colors ---
+const BAJA = '#63FFE0';
+const TEAL = '#00CED1';
+const ORANGE = '#FF6B35';
+const PURPLE = '#8B5CF6';
+const GOLD = '#FFD700';
+
+// --- Game State ---
+let gameState = 'start';
+let score = 0, distance = 0, speed = 1.0, time = 0, bonusScore = 0;
+let waveOffset = 0;
+let lastMilestone = 0;
+
+// Surfer
+let surferX = 0, surferY = 0, surferVY = 0;
+let isJumping = false;
+let canJump = false; // true when on the ramp/peak
+let surferAngle = 0;
+let surferTrail = [];
+
+// Hold-for-height jump: tap = small hop, hold = full jump
+let jumpKeyHeld = false;    // is the jump key currently pressed
+const JUMP_CUT = 0.45;     // velocity multiplier when releasing early
+
+// Screen shake
+let shakeIntensity = 0;
+function triggerShake(intensity) { shakeIntensity = Math.max(shakeIntensity, intensity); }
+function getShakeOffset() {
+  if (shakeIntensity > 0.3) {
+    const ox = (Math.random() - 0.5) * shakeIntensity;
+    const oy = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.88;
+    return { x: ox, y: oy };
+  }
+  shakeIntensity = 0;
+  return { x: 0, y: 0 };
+}
+
+// Obstacles & Collectibles
+let obstacles = [];
+let collectibles = [];
+let obstacleTimer = 0, collectibleTimer = 0;
+
+// Particles
+let particles = [];
+let speedLines = [];
+let popups = [];
+
+// Near miss
+let nearMissTimer = 0;
+
+// Flash overlay
+let flashColor = null, flashTimer = 0;
+
+// Jump buffer - player pressed jump, waiting for next crest
+let jumpBufferTimer = 0;
+const JUMP_BUFFER_TIME = 0.5;
+
+// Stars (background)
+const stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random(), y: Math.random() * 0.7,
+    r: 0.5 + Math.random() * 1.5,
+    twinkleSpeed: 1 + Math.random() * 3,
+    twinklePhase: Math.random() * Math.PI * 2,
+    brightness: 0.3 + Math.random() * 0.7
+  });
+}
+
+// Clouds
+let clouds = [];
+for (let i = 0; i < 10; i++) {
+  clouds.push({
+    x: Math.random() * 2 - 0.5,
+    y: 0.06 + Math.random() * 0.15,
+    w: 60 + Math.random() * 120,
+    h: 20 + Math.random() * 30,
+    speed: 0.01 + Math.random() * 0.01,
+    opacity: 0.05 + Math.random() * 0.06
+  });
+}
+
+// Distant wave offsets
+let distantWaveOffset = 0;
+
+// ============================================================
+// WAVE SURFACE - Triangle waves with straight sides
+// Linear ramp up → sharp peak → steep linear drop
+// ============================================================
+
+const WAVE_PERIOD = 491;
+const WAVE_AMP = 0.14; // fraction of H
+const RAMP_FRAC = 0.55;  // ramp takes 55% of period
+const DROP_FRAC = 0.28;  // drop takes 28% of period
+const FLAT_FRAC = 0.17;  // flat trough takes 17%
+
+function triangleShape(t) {
+  // t: 0..1 phase within one wave period
+  // Returns 0..1 normalized height (0=trough, 1=peak)
+  if (t < RAMP_FRAC) {
+    // Straight ramp up
+    return t / RAMP_FRAC;
+  } else if (t < RAMP_FRAC + DROP_FRAC) {
+    // Straight steep drop
+    const s = (t - RAMP_FRAC) / DROP_FRAC;
+    return 1.0 - s;
+  } else {
+    // Flat trough at bottom
+    return 0;
+  }
+}
+
+function getWavePhase(x) {
+  const wx = x + waveOffset;
+  return (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+}
+
+// Returns 0..1: how far up the wave the surfer is (0=trough, 1=peak)
+function getWaveHeight(x) {
+  return triangleShape(getWavePhase(x));
+}
+
+function getWaveY(x) {
+  const wx = x + waveOffset;
+  const phase = (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  let y = triangleShape(phase) * (H * WAVE_AMP);
+  // Tiny ripple for organic feel (very subtle so lines stay straight)
+  y += Math.sin(wx * 0.08 + 3.0) * (H * 0.0015);
+  return WAVE_BASELINE - y;
+}
+
+function getWaveSlope(x) {
+  return getWaveY(x + 4) - getWaveY(x - 4);
+}
+
+// Can jump anywhere on the wave — power scales with height
+function canJumpHere(x) {
+  return true;
+}
+
+// Returns 0..1 for how close to the peak (used for visual indicator)
+function getCrestness(x) {
+  const phase = getWavePhase(x);
+  if (phase > RAMP_FRAC - 0.12 && phase < RAMP_FRAC + 0.04) {
+    const dist = Math.abs(phase - RAMP_FRAC);
+    return Math.max(0, 1 - dist / 0.12);
+  }
+  return 0;
+}
+
+// Jump power based on wave position: higher on wave = more power
+function getJumpPower(x) {
+  const h = getWaveHeight(x);
+  const MIN_POWER = 0.25; // jumping from bottom of ramp gives 25% power
+  return MIN_POWER + (1 - MIN_POWER) * h;
+}
+
+// Find screen X positions of wave peaks (ramp→drop transition)
+function getCurlPositions() {
+  const positions = [];
+  const peakPhase = RAMP_FRAC;
+  const rawX = peakPhase * WAVE_PERIOD - (waveOffset % WAVE_PERIOD);
+  const startX = ((rawX % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD;
+  for (let x = startX; x < W + 50; x += WAVE_PERIOD) {
+    positions.push({ x, y: getWaveY(x) });
+  }
+  return positions;
+}
+
+// ============================================================
+// DRAW FUNCTIONS
+// ============================================================
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, WAVE_BASELINE);
+  grad.addColorStop(0, '#1a0a3e');
+  grad.addColorStop(0.2, '#2e1065');
+  grad.addColorStop(0.4, '#6b2fa0');
+  grad.addColorStop(0.6, '#d4547a');
+  grad.addColorStop(0.8, '#ff8c42');
+  grad.addColorStop(1, '#ffcc33');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, WAVE_BASELINE);
+}
+
+function drawStars() {
+  // Only draw stars in the upper dark portion of sky
+  stars.forEach(s => {
+    if (s.y > 0.3) return; // skip stars below the dark zone
+    const twinkle = 0.4 + 0.6 * Math.abs(Math.sin(time * s.twinkleSpeed + s.twinklePhase));
+    ctx.fillStyle = `rgba(255, 255, 255, ${s.brightness * twinkle * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawSun() {
+  const sx = W * 0.75, sy = H * 0.18, sr = H * 0.1;
+
+  // Big warm glow
+  const glow = ctx.createRadialGradient(sx, sy, sr * 0.3, sx, sy, sr * 3.5);
+  glow.addColorStop(0, 'rgba(255, 230, 100, 0.45)');
+  glow.addColorStop(0.3, 'rgba(255, 200, 50, 0.2)');
+  glow.addColorStop(0.6, 'rgba(255, 160, 40, 0.08)');
+  glow.addColorStop(1, 'rgba(255, 100, 30, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(sx, sy, sr * 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rays - cartoony spikes
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(time * 0.15); // slow spin
+  const rayCount = 12;
+  for (let i = 0; i < rayCount; i++) {
+    const angle = (i / rayCount) * Math.PI * 2;
+    const inner = sr * 1.05;
+    const outer = sr * 1.5 + Math.sin(time * 2 + i) * sr * 0.15;
+    const halfWidth = 0.12;
+    ctx.fillStyle = 'rgba(255, 220, 80, 0.5)';
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle - halfWidth) * inner, Math.sin(angle - halfWidth) * inner);
+    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    ctx.lineTo(Math.cos(angle + halfWidth) * inner, Math.sin(angle + halfWidth) * inner);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Sun body - gradient circle
+  const sunGrad = ctx.createRadialGradient(sx - sr * 0.15, sy - sr * 0.15, sr * 0.1, sx, sy, sr);
+  sunGrad.addColorStop(0, '#FFFDE0');
+  sunGrad.addColorStop(0.4, '#FFE44D');
+  sunGrad.addColorStop(0.8, '#FFB830');
+  sunGrad.addColorStop(1, '#FF8C00');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cartoony face - sunglasses
+  ctx.fillStyle = '#333';
+  // Left lens
+  ctx.beginPath();
+  ctx.ellipse(sx - sr * 0.28, sy - sr * 0.05, sr * 0.22, sr * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Right lens
+  ctx.beginPath();
+  ctx.ellipse(sx + sr * 0.28, sy - sr * 0.05, sr * 0.22, sr * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Bridge
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = sr * 0.06;
+  ctx.beginPath();
+  ctx.moveTo(sx - sr * 0.08, sy - sr * 0.05);
+  ctx.lineTo(sx + sr * 0.08, sy - sr * 0.05);
+  ctx.stroke();
+  // Lens shine
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(sx - sr * 0.2, sy - sr * 0.12, sr * 0.08, sr * 0.06, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(sx + sr * 0.35, sy - sr * 0.12, sr * 0.08, sr * 0.06, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Big smile
+  ctx.strokeStyle = '#CC6600';
+  ctx.lineWidth = sr * 0.05;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(sx, sy + sr * 0.05, sr * 0.35, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+}
+
+function drawClouds() {
+  clouds.forEach(c => {
+    ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity + 0.05})`;
+    const cx = c.x * W, cy = c.y * H;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, c.w / 2, c.h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx - c.w * 0.25, cy - c.h * 0.15, c.w * 0.35, c.h * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + c.w * 0.2, cy + c.h * 0.1, c.w * 0.3, c.h * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// ============================================================
+// BEACH BACKGROUND - scrolling beach with palm trees & people
+// ============================================================
+
+const beachItems = [];
+function initBeach() {
+  // Spread items across a wide virtual strip
+  for (let i = 0; i < 20; i++) {
+    const bx = Math.random() * W * 3;
+    const roll = Math.random();
+    if (roll < 0.45) {
+      beachItems.push({ type: 'palm', x: bx, h: 120 + Math.random() * 80, lean: (Math.random() - 0.5) * 0.35 });
+    } else if (roll < 0.65) {
+      beachItems.push({ type: 'person', x: bx, pose: Math.floor(Math.random() * 3) });
+    } else if (roll < 0.8) {
+      beachItems.push({ type: 'umbrella', x: bx, color: ['#E74C3C','#3498DB','#F39C12','#2ECC71'][Math.floor(Math.random()*4)] });
+    } else {
+      beachItems.push({ type: 'towel', x: bx, color: ['#E67E22','#9B59B6','#1ABC9C'][Math.floor(Math.random()*3)] });
+    }
+  }
+}
+initBeach();
+
+let beachDuneOffset = 0;
+
+function getBeachDuneY(x) {
+  // Rolling sandy hills
+  const dx = x + beachDuneOffset;
+  let y = Math.sin(dx * 0.004) * (H * 0.05);
+  y += Math.sin(dx * 0.009 + 1.2) * (H * 0.03);
+  y += Math.sin(dx * 0.018 + 2.5) * (H * 0.012);
+  return y;
+}
+
+function drawBeach(scrollSpeed, dt) {
+  const beachH = H * 0.4;
+  const beachY = WAVE_BASELINE - beachH + H * 0.02;
+  const parallaxSpeed = scrollSpeed * 0.15;
+  beachDuneOffset += parallaxSpeed * dt;
+
+  // Sandy hills - filled with gradient, shaped by dune function
+  const sandGrad = ctx.createLinearGradient(0, beachY, 0, beachY + beachH);
+  sandGrad.addColorStop(0, '#E8D5A3');
+  sandGrad.addColorStop(0.25, '#F0D9A0');
+  sandGrad.addColorStop(0.5, '#DEB887');
+  sandGrad.addColorStop(0.75, '#C8AD75');
+  sandGrad.addColorStop(0.9, '#A08855');
+  sandGrad.addColorStop(1, '#8B7744');
+  ctx.fillStyle = sandGrad;
+  ctx.beginPath();
+  ctx.moveTo(0, beachY + beachH + 10);
+  for (let x = 0; x <= W; x += 4) {
+    const duneY = beachY + beachH * 0.35 + getBeachDuneY(x);
+    ctx.lineTo(x, duneY);
+  }
+  ctx.lineTo(W, beachY + beachH + 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Second dune layer (foreground, darker, slightly offset)
+  const sandGrad2 = ctx.createLinearGradient(0, beachY + beachH * 0.4, 0, beachY + beachH);
+  sandGrad2.addColorStop(0, '#D4B88C');
+  sandGrad2.addColorStop(0.5, '#C4A265');
+  sandGrad2.addColorStop(1, '#8B7744');
+  ctx.fillStyle = sandGrad2;
+  ctx.beginPath();
+  ctx.moveTo(0, beachY + beachH + 10);
+  for (let x = 0; x <= W; x += 4) {
+    const duneY = beachY + beachH * 0.55 + getBeachDuneY(x + 200) * 0.7;
+    ctx.lineTo(x, duneY);
+  }
+  ctx.lineTo(W, beachY + beachH + 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wet sand at water line
+  ctx.fillStyle = 'rgba(100, 90, 65, 0.5)';
+  ctx.fillRect(0, beachY + beachH - 10, W, 10);
+
+  // Update and draw items on the dunes
+  beachItems.forEach(item => {
+    item.x -= parallaxSpeed * dt;
+    if (item.x < -120) item.x += W * 3 + 120;
+    if (item.x < -100 || item.x > W + 100) return;
+
+    // Items sit on the foreground dune surface
+    const duneY = beachY + beachH * 0.55 + getBeachDuneY(item.x + 200) * 0.7;
+
+    if (item.type === 'palm') {
+      drawPalmTree(item.x, duneY, item.h, item.lean);
+    } else if (item.type === 'person') {
+      drawBeachPerson(item.x, duneY, item.pose);
+    } else if (item.type === 'umbrella') {
+      drawUmbrella(item.x, duneY, item.color);
+    } else if (item.type === 'towel') {
+      drawTowel(item.x, duneY, item.color);
+    }
+  });
+}
+
+function drawPalmTree(x, y, h, lean) {
+  ctx.save();
+  ctx.translate(x, y);
+  const s = h / 40;
+
+  // Trunk
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(lean * 15 * s, -h * 0.5, lean * 20 * s, -h);
+  ctx.stroke();
+
+  // Trunk texture lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 6; i++) {
+    const t = i / 6;
+    const tx = lean * 20 * s * t * t;
+    const ty = -h * t;
+    ctx.beginPath();
+    ctx.moveTo(tx - 2 * s, ty);
+    ctx.lineTo(tx + 2 * s, ty);
+    ctx.stroke();
+  }
+
+  // Palm fronds
+  const topX = lean * 20 * s;
+  const topY = -h;
+  for (let i = 0; i < 6; i++) {
+    const angle = -2.5 + i * 1.0;
+    const frondLen = 14 * s + Math.sin(time * 1.5 + i) * 2 * s;
+    const droop = 6 * s;
+    ctx.strokeStyle = '#27AE60';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.quadraticCurveTo(
+      topX + Math.cos(angle) * frondLen * 0.6,
+      topY + Math.sin(angle) * frondLen * 0.4,
+      topX + Math.cos(angle) * frondLen,
+      topY + Math.sin(angle) * frondLen + droop
+    );
+    ctx.stroke();
+  }
+
+  // Coconuts
+  ctx.fillStyle = '#5D4037';
+  ctx.beginPath(); ctx.arc(topX - 2 * s, topY + 2 * s, 1.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(topX + 1.5 * s, topY + 2.5 * s, 1.5 * s, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBeachPerson(x, y, pose) {
+  ctx.save();
+  ctx.translate(x, y);
+  const s = 3;
+  const shirtColors = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6'];
+  const shirt = shirtColors[pose % shirtColors.length];
+
+  // --- Beach chair ---
+  // Back legs
+  ctx.strokeStyle = '#5D4E37';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath(); ctx.moveTo(-6 * s, 1 * s); ctx.lineTo(-7 * s, 4 * s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(8 * s, 1 * s); ctx.lineTo(9 * s, 4 * s); ctx.stroke();
+  // Front leg
+  ctx.beginPath(); ctx.moveTo(10 * s, -2 * s); ctx.lineTo(11 * s, 4 * s); ctx.stroke();
+
+  // Chair seat (angled back)
+  ctx.fillStyle = '#C0392B';
+  ctx.beginPath();
+  ctx.moveTo(-7 * s, 0);
+  ctx.lineTo(10 * s, -2 * s);
+  ctx.lineTo(10 * s, 0);
+  ctx.lineTo(-7 * s, 2 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  // Chair back (reclined)
+  ctx.fillStyle = '#C0392B';
+  ctx.beginPath();
+  ctx.moveTo(-7 * s, 0);
+  ctx.lineTo(-10 * s, -8 * s);
+  ctx.lineTo(-8 * s, -8 * s);
+  ctx.lineTo(-5 * s, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Chair stripes
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1.5 * s;
+  // Seat stripes
+  for (let i = 0; i < 3; i++) {
+    const t = 0.25 + i * 0.25;
+    const lx = -7 * s + t * 17 * s;
+    const ly = 2 * s - t * 2 * s;
+    ctx.beginPath(); ctx.moveTo(lx, ly - 2 * s); ctx.lineTo(lx, ly); ctx.stroke();
+  }
+  // Back stripes
+  for (let i = 0; i < 2; i++) {
+    const t = 0.33 + i * 0.33;
+    const bx = -7 * s + t * (-3 * s);
+    const by = 0 + t * (-8 * s);
+    ctx.beginPath(); ctx.moveTo(bx - 1.5 * s, by); ctx.lineTo(bx + 1.5 * s, by); ctx.stroke();
+  }
+
+  // --- Person reclining in chair ---
+  // Legs extended on seat
+  ctx.strokeStyle = '#FFDBAC';
+  ctx.lineWidth = 2.5 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(2 * s, -2 * s); ctx.lineTo(8 * s, -2 * s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2 * s, -1 * s); ctx.lineTo(8 * s, -1 * s); ctx.stroke();
+
+  // Torso leaning back against chair back
+  ctx.fillStyle = shirt;
+  ctx.beginPath();
+  ctx.moveTo(-2 * s, -2 * s);
+  ctx.lineTo(-7 * s, -7 * s);
+  ctx.lineTo(-4 * s, -8 * s);
+  ctx.lineTo(1 * s, -3 * s);
+  ctx.closePath();
+  ctx.fill();
+
+  // Head resting on chair back
+  ctx.fillStyle = '#FFDBAC';
+  ctx.beginPath(); ctx.arc(-5.5 * s, -10 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
+  // Hair
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(-5.5 * s, -11 * s, 3 * s, Math.PI, Math.PI * 2); ctx.fill();
+
+  // Sunglasses
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-7.5 * s, -10.5 * s, 2 * s, 1.2 * s);
+  ctx.fillRect(-5 * s, -10.5 * s, 2 * s, 1.2 * s);
+
+  // Arm resting / holding drink
+  ctx.strokeStyle = '#FFDBAC';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath(); ctx.moveTo(-1 * s, -4 * s); ctx.lineTo(2 * s, -5 * s); ctx.stroke();
+
+  // Drink in hand
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(1.5 * s, -7 * s, 2 * s, 3 * s);
+  ctx.fillStyle = '#FFD700';
+  ctx.fillRect(1.5 * s, -7.5 * s, 2 * s, 1 * s);
+
+  ctx.restore();
+}
+
+function drawUmbrella(x, y, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  // Pole
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -100); ctx.stroke();
+  // Canopy
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(0, -100, 55, 22, 0, Math.PI, 0);
+  ctx.fill();
+  // Stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, -100, 55, 22, 0, Math.PI + 0.3, Math.PI + 1.0);
+  ctx.lineTo(0, -100);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawTowel(x, y, color) {
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.6;
+  ctx.fillRect(x - 28, y - 2, 56, 14);
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x - 22, y + 1, 44, 3);
+  ctx.globalAlpha = 1;
+}
+
+function drawDistantWaves() {
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#1565C0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 4) {
+    const wx = x + distantWaveOffset;
+    const y = WAVE_BASELINE - H * 0.1 + Math.sin(wx * 0.004) * 10 + Math.sin(wx * 0.012) * 5;
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// ============================================================
+// WAVE DRAWING - Triangle waves with white crests
+// ============================================================
+
+function drawWave() {
+  const amp = H * WAVE_AMP;
+  const waveTop = WAVE_BASELINE - amp;
+
+  // Wave body with vertical gradient: white at crests → teal → deep blue at bottom
+  const bodyGrad = ctx.createLinearGradient(0, waveTop, 0, H);
+  bodyGrad.addColorStop(0, 'rgba(235, 250, 255, 0.95)');  // white/foam at crest
+  bodyGrad.addColorStop(0.08, 'rgba(180, 240, 240, 0.9)'); // pale teal
+  bodyGrad.addColorStop(0.2, 'rgba(0, 190, 200, 0.8)');    // bright teal
+  bodyGrad.addColorStop(0.4, 'rgba(0, 120, 150, 0.7)');    // mid teal
+  bodyGrad.addColorStop(0.65, 'rgba(0, 70, 110, 0.85)');   // deep blue
+  bodyGrad.addColorStop(1, '#002244');                      // abyss
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 3) ctx.lineTo(x, getWaveY(x));
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Surface line - subtle glow
+  ctx.strokeStyle = 'rgba(220, 250, 255, 0.6)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(99, 255, 224, 0.5)';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 3) {
+    const y = getWaveY(x);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Subtle foam dots along upper ramp
+  for (let x = 0; x < W; x += 26) {
+    const phase = getWavePhase(x);
+    if (phase > 0.2 && phase < RAMP_FRAC) {
+      const y = getWaveY(x);
+      const alpha = 0.08 + 0.05 * Math.sin(x * 0.05 + time * 3);
+      ctx.fillStyle = `rgba(240, 248, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y + 3, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// ============================================================
+// JUMP INDICATOR - Shows when player can jump
+// ============================================================
+
+function drawJumpIndicator() {
+  if (isJumping || gameState !== 'playing') return;
+  if (!canJump) return;
+
+  const power = getJumpPower(surferX); // 0.25..1
+  const pulse = 0.7 + 0.3 * Math.sin(time * 8);
+
+  ctx.save();
+
+  // Glow intensity scales with jump power
+  ctx.fillStyle = `rgba(99, 255, 224, ${power * pulse * 0.15})`;
+  ctx.beginPath();
+  ctx.arc(surferX, surferY - 10, 35 + power * 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Arrow - size scales with power
+  const arrowScale = 0.5 + power * 0.5;
+  const arrowY = surferY - 70 - Math.sin(time * 6) * 4;
+  ctx.fillStyle = `rgba(99, 255, 224, ${power * pulse * 0.9})`;
+  ctx.beginPath();
+  ctx.moveTo(surferX, arrowY - 12 * arrowScale);
+  ctx.lineTo(surferX - 8 * arrowScale, arrowY);
+  ctx.lineTo(surferX - 3 * arrowScale, arrowY);
+  ctx.lineTo(surferX - 3 * arrowScale, arrowY + 8 * arrowScale);
+  ctx.lineTo(surferX + 3 * arrowScale, arrowY + 8 * arrowScale);
+  ctx.lineTo(surferX + 3 * arrowScale, arrowY);
+  ctx.lineTo(surferX + 8 * arrowScale, arrowY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Power percentage text
+  const pct = Math.round(power * 100);
+  ctx.font = "bold 10px 'Orbitron', sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(99, 255, 224, ${power * pulse * 0.75})`;
+  ctx.fillText(pct + '%', surferX, arrowY - 14 * arrowScale);
+
+  ctx.restore();
+}
+
+// ============================================================
+// SURFER DRAWING
+// ============================================================
+
+function drawSurfer(x, y, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(3, 3);
+  ctx.rotate(-angle);
+
+  if (isJumping) {
+    // === JUMP POSE: crouched, grabbing the board ===
+
+    // Surfboard
+    ctx.fillStyle = GOLD;
+    ctx.shadowColor = GOLD;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 18, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = BAJA;
+    ctx.fillRect(-8, 7, 16, 1.5);
+    ctx.shadowBlur = 0;
+
+    // Legs - bent/tucked up
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-3, 2); ctx.lineTo(-5, 5); ctx.lineTo(-2, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3, 2); ctx.lineTo(5, 5); ctx.lineTo(2, 7); ctx.stroke();
+
+    // Wetsuit body - crouched lower
+    ctx.fillStyle = '#1A1A2E';
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(-7, 3);
+    ctx.lineTo(7, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = BAJA;
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.moveTo(0, -4);
+    ctx.lineTo(-4, 2);
+    ctx.lineTo(4, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Arms - reaching down to grab the board
+    ctx.strokeStyle = '#FFDBAC';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-8, 3); ctx.lineTo(-6, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, -2); ctx.lineTo(8, 3); ctx.lineTo(6, 7); ctx.stroke();
+
+    // Hands on board (small circles)
+    ctx.fillStyle = '#FFDBAC';
+    ctx.beginPath(); ctx.arc(-6, 7.5, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, 7.5, 1.5, 0, Math.PI * 2); ctx.fill();
+
+    // Head - tucked down
+    ctx.fillStyle = '#FFDBAC';
+    ctx.beginPath();
+    ctx.arc(0, -9, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(0, -10.5, 5, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+  } else {
+    // === STANDING POSE: riding the wave ===
+
+    // Surfboard
+    ctx.fillStyle = GOLD;
+    ctx.shadowColor = GOLD;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 18, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = BAJA;
+    ctx.fillRect(-8, 7, 16, 1.5);
+    ctx.shadowBlur = 0;
+
+    // Legs
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-4, 2); ctx.lineTo(-6, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, 2); ctx.lineTo(6, 7); ctx.stroke();
+
+    // Wetsuit body
+    ctx.fillStyle = '#1A1A2E';
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(-8, 3);
+    ctx.lineTo(8, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = BAJA;
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.moveTo(0, -10);
+    ctx.lineTo(-4, 2);
+    ctx.lineTo(4, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Arms - balanced surf pose
+    ctx.strokeStyle = '#FFDBAC';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-15, -4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(15, -8); ctx.stroke();
+
+    // Head
+    ctx.fillStyle = '#FFDBAC';
+    ctx.beginPath();
+    ctx.arc(0, -16, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(0, -17.5, 5, Math.PI, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawSurferTrail() {
+  if (surferTrail.length < 2) return;
+  for (let i = 1; i < surferTrail.length; i++) {
+    const t = surferTrail[i];
+    const alpha = t.life;
+    if (isJumping) {
+      ctx.fillStyle = `rgba(99, 255, 224, ${alpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 2 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = `rgba(99, 255, 224, ${alpha * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y + 8, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// ============================================================
+// OBSTACLES - All positioned above wave line
+// ============================================================
+
+// Snap a world X to the lower half of the drop side (right side) of a wave
+function snapToDropSide(rawX) {
+  const wx = rawX + waveOffset;
+  const phase = (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  // Lower half of drop: midpoint of drop to end of drop
+  const dropMid = RAMP_FRAC + DROP_FRAC * 0.5;
+  const dropEnd = RAMP_FRAC + DROP_FRAC;
+  if (phase >= dropMid && phase < dropEnd) {
+    return rawX; // already in lower half of drop
+  }
+  // Shift forward to land in the lower half of the drop
+  const targetPhase = dropMid + Math.random() * (DROP_FRAC * 0.45);
+  const phaseDiff = ((targetPhase - phase) % 1 + 1) % 1;
+  return rawX + phaseDiff * WAVE_PERIOD;
+}
+
+function createObstacle() {
+  const rawX = W + 50 + Math.random() * 200;
+  const worldX = snapToDropSide(rawX);
+  const type = Math.random();
+
+  if (type < 0.5) {
+    // Crab on wave surface
+    obstacles.push({
+      kind: 'crab', worldX,
+      heightAboveWave: 0,
+      hitW: 72, hitH: 54
+    });
+  } else {
+    // Jellyfish on wave surface
+    obstacles.push({
+      kind: 'jellyfish', worldX,
+      heightAboveWave: 0,
+      hitW: 50, hitH: 50
+    });
+  }
+}
+
+function drawCrab(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(2.5, 2.5);
+
+  const legWiggle = Math.sin(time * 8 + x * 0.1) * 3;
+  const clawSnap = Math.sin(time * 3) * 4;
+
+  // Legs
+  ctx.strokeStyle = '#CC3020';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const lx = -8 + i * 5;
+    const wiggle = legWiggle + i * 0.5;
+    ctx.beginPath(); ctx.moveTo(lx, 4); ctx.lineTo(lx - 8, 10 + wiggle); ctx.lineTo(lx - 12, 8 + wiggle); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-lx, 4); ctx.lineTo(-lx + 8, 10 - wiggle); ctx.lineTo(-lx + 12, 8 - wiggle); ctx.stroke();
+  }
+
+  // Shell
+  const shellGrad = ctx.createRadialGradient(0, -2, 2, 0, 0, 14);
+  shellGrad.addColorStop(0, '#FF5040');
+  shellGrad.addColorStop(0.6, '#E84030');
+  shellGrad.addColorStop(1, '#CC3020');
+  ctx.fillStyle = shellGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 14, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Shell rings
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.ellipse(0, 0, 10, 7, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // Claws
+  ctx.fillStyle = '#E84030';
+  ctx.beginPath();
+  ctx.moveTo(-14, -2); ctx.lineTo(-20, -8 - clawSnap); ctx.lineTo(-23, -4); ctx.lineTo(-20, 1 + clawSnap / 2);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(14, -2); ctx.lineTo(20, -8 + clawSnap); ctx.lineTo(23, -4); ctx.lineTo(20, 1 - clawSnap / 2);
+  ctx.closePath(); ctx.fill();
+
+  // Eyes
+  ctx.strokeStyle = '#CC3020';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-5, -8); ctx.lineTo(-7, -16); ctx.stroke();
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath(); ctx.arc(-7, -16, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(-6, -16, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(5, -8); ctx.lineTo(7, -16); ctx.stroke();
+  ctx.fillStyle = '#FFF';
+  ctx.beginPath(); ctx.arc(7, -16, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(8, -16, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawJellyfish(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  const bob = Math.sin(time * 2.5 + x * 0.01) * 4;
+  ctx.translate(0, bob);
+  ctx.scale(2.2, 2.2);
+
+  // Bell (dome)
+  const bellGrad = ctx.createRadialGradient(0, 1, 1, 0, 0, 10);
+  bellGrad.addColorStop(0, 'rgba(255, 150, 255, 0.9)');
+  bellGrad.addColorStop(0.5, 'rgba(200, 100, 220, 0.7)');
+  bellGrad.addColorStop(1, 'rgba(150, 50, 180, 0.4)');
+  ctx.fillStyle = bellGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 10, 8, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Inner glow
+  ctx.fillStyle = 'rgba(255, 200, 255, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, -4, 5, 4, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Frilly edge
+  ctx.strokeStyle = 'rgba(255, 180, 255, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let a = Math.PI; a <= Math.PI * 2; a += 0.15) {
+    const r = 10 + Math.sin(a * 6 + time * 3) * 1.5;
+    const px = Math.cos(a) * r;
+    const py = Math.sin(a) * 8 - 2;
+    a === Math.PI ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Tentacles
+  for (let i = -3; i <= 3; i++) {
+    const wiggle = Math.sin(time * 3 + i * 0.8) * 3;
+    ctx.strokeStyle = `rgba(220, 160, 255, ${0.5 + Math.abs(i) * 0.05})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(i * 2.5, -2);
+    ctx.quadraticCurveTo(i * 2.5 + wiggle, 6, i * 2.5 + wiggle * 1.5, 14);
+    ctx.stroke();
+  }
+
+  // Eyes
+  ctx.fillStyle = '#2c2c4e';
+  ctx.beginPath(); ctx.arc(-3, -4, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3, -4, 1.5, 0, Math.PI * 2); ctx.fill();
+  // Eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-2.5, -4.5, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3.5, -4.5, 0.5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+// ============================================================
+// COLLECTIBLES - Mountain Dew cans above wave
+// ============================================================
+
+function createCollectible() {
+  collectibles.push({
+    worldX: W + 100 + Math.random() * 300,
+    heightAboveWave: H * 0.1 + Math.random() * H * 0.5,
+    collected: false, collectAnim: 0,
+    rot: 0,
+    pulsePhase: Math.random() * Math.PI * 2
+  });
+}
+
+function drawDewCan(x, y, scale, pulse) {
+  ctx.save();
+  ctx.translate(x, y);
+  const s = scale || 1;
+  const bob = Math.sin(pulse) * 3;
+  ctx.translate(0, bob);
+  ctx.scale(s, s);
+
+  // Can body - Mountain Dew green
+  const canGrad = ctx.createLinearGradient(-8, 0, 8, 0);
+  canGrad.addColorStop(0, '#2E7D32');
+  canGrad.addColorStop(0.3, '#4CAF50');
+  canGrad.addColorStop(0.5, '#66BB6A');
+  canGrad.addColorStop(0.7, '#4CAF50');
+  canGrad.addColorStop(1, '#2E7D32');
+  ctx.fillStyle = canGrad;
+  ctx.beginPath();
+  ctx.roundRect(-8, -14, 16, 28, 3);
+  ctx.fill();
+
+  // Can top rim - silver
+  ctx.fillStyle = '#C0C0C0';
+  ctx.beginPath();
+  ctx.ellipse(0, -14, 8, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#A0A0A0';
+  ctx.beginPath();
+  ctx.ellipse(0, -14, 6, 1.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pull tab
+  ctx.fillStyle = '#888';
+  ctx.beginPath();
+  ctx.ellipse(0, -14.5, 2.5, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Can bottom rim
+  ctx.fillStyle = '#B0B0B0';
+  ctx.beginPath();
+  ctx.ellipse(0, 14, 8, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Label - "DEW" text area
+  ctx.fillStyle = '#FFEB3B';
+  ctx.fillRect(-6, -6, 12, 10);
+
+  // "MTN" text
+  ctx.fillStyle = '#1B5E20';
+  ctx.font = "bold 5px sans-serif";
+  ctx.textAlign = 'center';
+  ctx.fillText('MTN', 0, -1);
+
+  // "DEW" text
+  ctx.font = "bold 7px sans-serif";
+  ctx.fillText('DEW', 0, 6);
+
+  // Glow
+  ctx.shadowColor = '#4CAF50';
+  ctx.shadowBlur = 10 + 4 * Math.sin(pulse);
+  ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(-9, -15, 18, 30, 3);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
+// ============================================================
+// SEAGULLS - Sky obstacles (between wave and stars)
+// ============================================================
+
+let seagulls = [];
+let seagullTimer = 0;
+
+function createSeagull() {
+  // Fly in the sky zone: above the wave peak area, below the stars
+  // Stars are at y: 0 to 0.7*H, wave crests reach about WAVE_BASELINE - WAVE_AMP*H
+  // Seagulls fly in the mid-sky: 35% to 70% of screen height
+  const skyY = H * 0.35 + Math.random() * H * 0.35;
+  seagulls.push({
+    worldX: W + 50 + Math.random() * 150,
+    y: skyY,
+    wingPhase: Math.random() * Math.PI * 2,
+    speed: 0.3 + Math.random() * 0.4, // extra speed multiplier on top of scroll
+    hitW: 50, hitH: 30
+  });
+}
+
+function drawSeagull(x, y, wingPhase) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  const wingAngle = Math.sin(wingPhase) * 0.5;
+  const wingY = Math.sin(wingPhase) * 6;
+
+  // Body
+  ctx.fillStyle = '#E8E8E8';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Left wing
+  ctx.fillStyle = '#D0D0D0';
+  ctx.beginPath();
+  ctx.moveTo(-4, -1);
+  ctx.lineTo(-22, -6 + wingY);
+  ctx.lineTo(-18, -2 + wingY * 0.5);
+  ctx.lineTo(-4, 1);
+  ctx.closePath();
+  ctx.fill();
+  // Wing tip
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.moveTo(-18, -5 + wingY);
+  ctx.lineTo(-24, -8 + wingY * 1.2);
+  ctx.lineTo(-20, -3 + wingY * 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right wing
+  ctx.fillStyle = '#D0D0D0';
+  ctx.beginPath();
+  ctx.moveTo(4, -1);
+  ctx.lineTo(22, -6 + wingY);
+  ctx.lineTo(18, -2 + wingY * 0.5);
+  ctx.lineTo(4, 1);
+  ctx.closePath();
+  ctx.fill();
+  // Wing tip
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.moveTo(18, -5 + wingY);
+  ctx.lineTo(24, -8 + wingY * 1.2);
+  ctx.lineTo(20, -3 + wingY * 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#F5F5F5';
+  ctx.beginPath();
+  ctx.arc(-10, -2, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(-11, -2.5, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = '#FF8C00';
+  ctx.beginPath();
+  ctx.moveTo(-13, -2);
+  ctx.lineTo(-18, -1);
+  ctx.lineTo(-13, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+
+function spawnParticles(x, y, count, color, spreadX, spreadY, life, grav) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * (spreadX || 150),
+      vy: -(Math.random() * (spreadY || 150) + 30),
+      life: life || (0.4 + Math.random() * 0.4),
+      maxLife: life || 0.7,
+      color: color || BAJA,
+      r: 1.5 + Math.random() * 3,
+      grav: grav !== undefined ? grav : 300
+    });
+  }
+}
+
+function spawnWaterSpray() {
+  if (isJumping) return;
+  const sprayCount = Math.floor(speed * 1.2);
+  for (let i = 0; i < sprayCount; i++) {
+    if (Math.random() < 0.3 * speed) {
+      const sx = surferX + (Math.random() - 0.5) * 20;
+      particles.push({
+        x: sx, y: getWaveY(sx) - 2,
+        vx: -30 - Math.random() * 40 * speed,
+        vy: -(40 + Math.random() * 60 * speed),
+        life: 0.2 + Math.random() * 0.15,
+        maxLife: 0.35,
+        color: Math.random() < 0.5 ? 'rgba(240,248,255,0.7)' : 'rgba(99,255,224,0.5)',
+        r: 1 + Math.random() * 2,
+        grav: 200
+      });
+    }
+  }
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    const alpha = Math.max(0, p.life / p.maxLife);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ============================================================
+// SPEED LINES
+// ============================================================
+
+function updateSpeedLines(dt) {
+  if (speed > 1.5) {
+    const count = Math.floor((speed - 1.5) * 3);
+    for (let i = 0; i < count; i++) {
+      if (Math.random() < 0.4) {
+        speedLines.push({
+          x: W + 10,
+          y: Math.random() * WAVE_BASELINE,
+          len: 30 + Math.random() * 60 * speed,
+          life: 0.2 + Math.random() * 0.2,
+          maxLife: 0.3
+        });
+      }
+    }
+  }
+  speedLines.forEach(l => { l.x -= 800 * speed * dt; l.life -= dt; });
+  speedLines = speedLines.filter(l => l.life > 0);
+}
+
+function drawSpeedLines() {
+  speedLines.forEach(l => {
+    const alpha = (l.life / l.maxLife) * 0.25;
+    ctx.strokeStyle = `rgba(99, 255, 224, ${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(l.x, l.y);
+    ctx.lineTo(l.x + l.len, l.y);
+    ctx.stroke();
+  });
+}
+
+// ============================================================
+// SCORE POPUPS
+// ============================================================
+
+function createPopup(text, x, y, color) {
+  popups.push({ text, x, y, color: color || GOLD, life: 1.2, maxLife: 1.2, size: 20 });
+}
+
+function drawPopups() {
+  popups.forEach(p => {
+    const t = 1 - p.life / p.maxLife;
+    const alpha = 1 - t;
+    const scale = 1 + t * 0.5;
+    ctx.save();
+    ctx.translate(p.x, p.y - t * 40);
+    ctx.scale(scale, scale);
+    ctx.font = `900 ${p.size}px 'Orbitron', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 15;
+    ctx.fillText(p.text, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  });
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+
+const keys = {};
+
+function isJumpKey(code) {
+  return code === 'Space' || code === 'ArrowUp' || code === 'Tab';
+}
+
+window.addEventListener('keydown', e => {
+  if (isJumpKey(e.code)) e.preventDefault();
+  if (keys[e.code]) return; // ignore key repeat
+  keys[e.code] = true;
+  if (gameState === 'playing' && isJumpKey(e.code) && !isJumping) {
+    jumpKeyHeld = true;
+    attemptJump();
+  }
+});
+window.addEventListener('keyup', e => {
+  keys[e.code] = false;
+  if (isJumpKey(e.code)) {
+    // Release while jumping upward → cut velocity for shorter jump
+    if (jumpKeyHeld && isJumping && surferVY < 0) {
+      surferVY *= JUMP_CUT;
+    }
+    jumpKeyHeld = false;
+  }
+});
+
+// Touch: tap = jump, hold = full height jump
+window.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (gameState === 'playing' && !isJumping) {
+    jumpKeyHeld = true;
+    attemptJump();
+  }
+}, { passive: false });
+window.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (jumpKeyHeld && isJumping && surferVY < 0) {
+    surferVY *= JUMP_CUT;
+  }
+  jumpKeyHeld = false;
+}, { passive: false });
+
+function attemptJump() {
+  doJump();
+}
+
+function doJump() {
+  const power = getJumpPower(surferX); // 0.25 at trough, 1.0 at peak
+  isJumping = true;
+  surferVY = -JUMP_VEL * power * 0.9;
+  // Splash scales with power
+  const count = Math.floor(6 + 10 * power);
+  spawnParticles(surferX, surferY + 5, count, 'rgba(240,248,255,0.8)', 80 + 60 * power, 70 + 50 * power, 0.5, 200);
+  spawnParticles(surferX, surferY + 5, Math.floor(4 + 6 * power), BAJA, 60 + 40 * power, 50 + 40 * power, 0.4, 250);
+  triggerShake(2 + 4 * power);
+}
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+
+function resetGame() {
+  score = 0; distance = 0; speed = 1.0; time = 0; bonusScore = 0;
+  waveOffset = 0; surferVY = 0; isJumping = false;
+  jumpKeyHeld = false;
+  obstacleTimer = 0; collectibleTimer = 0; lastMilestone = 0;
+  obstacles = []; collectibles = []; particles = [];
+  seagulls = []; seagullTimer = 0;
+  speedLines = []; surferTrail = []; popups = [];
+  nearMissTimer = 0; flashColor = null; flashTimer = 0;
+  jumpBufferTimer = 0; canJump = false;
+}
+
+function startGame() {
+  resetGame();
+  gameState = 'playing';
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+function gameOver() {
+  gameState = 'gameover';
+  flashColor = 'rgba(255, 50, 50, 0.4)';
+  flashTimer = 0.3;
+  triggerShake(20);
+  spawnParticles(surferX, surferY, 30, 'rgba(255, 80, 80, 0.8)', 250, 200, 0.7, 300);
+  spawnParticles(surferX, surferY, 15, BAJA, 200, 150, 0.5, 250);
+
+  const overlay = document.getElementById('overlay');
+  overlay.querySelector('h1').textContent = 'WIPEOUT!';
+  overlay.querySelector('h2').textContent = 'BAJA WAVE RIDER';
+  document.getElementById('finalScore').textContent = 'Score: ' + score;
+  document.getElementById('finalDist').textContent = 'Distance: ' + Math.floor(distance) + ' m';
+  document.getElementById('startBtn').textContent = 'SURF AGAIN';
+  setTimeout(() => overlay.classList.remove('hidden'), 600);
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+// ============================================================
+// UPDATE
+// ============================================================
+
+let lastTime = performance.now();
+let lastDt = 0.016;
+
+function update(now) {
+  lastDt = Math.min((now - lastTime) / 1000, 0.05);
+  const dt = lastDt;
+  lastTime = now;
+
+  if (gameState !== 'playing') return;
+
+  time += dt;
+  speed = 1.0 + time * 0.025;
+  const baseScrollSpeed = 300 * speed;
+  const scrollSpeed = isJumping ? baseScrollSpeed * 1.2 : baseScrollSpeed;
+  waveOffset += scrollSpeed * dt;
+  distance += scrollSpeed * dt * 0.1;
+  distantWaveOffset += scrollSpeed * 0.3 * dt;
+
+  surferX = W * 0.22;
+
+  // Update clouds
+  clouds.forEach(c => {
+    c.x -= scrollSpeed * c.speed * dt / W;
+    if (c.x < -0.3) c.x += 1.8;
+  });
+
+  // --- Wave height for jump power ---
+  canJump = canJumpHere(surferX);
+
+  // --- Surfer physics ---
+  const waveYAtSurfer = getWaveY(surferX);
+  const surferOnWaveY = waveYAtSurfer - 14;
+
+  if (isJumping) {
+    // Apply gravity
+    surferVY += GRAVITY * dt;
+    surferY += surferVY * dt;
+
+    // Return to wave surface
+    if (surferY >= surferOnWaveY) {
+      surferY = surferOnWaveY;
+      surferVY = 0;
+      isJumping = false;
+      // Landing splash
+      spawnParticles(surferX, surferY + 10, 10, 'rgba(99,255,224,0.7)', 100, 80, 0.4, 200);
+      triggerShake(3);
+    }
+  } else {
+    // Ride the wave surface
+    surferY = surferOnWaveY;
+  }
+
+  // Wave slope angle
+  const slope = getWaveSlope(surferX);
+  if (!isJumping) surferAngle = Math.atan2(-slope, 8);
+  // When jumping, surferAngle stays locked to the wave angle at launch
+
+  // Surfer trail
+  surferTrail.push({ x: surferX, y: surferY, life: 1 });
+  surferTrail.forEach(t => t.life -= dt * 2.5);
+  surferTrail = surferTrail.filter(t => t.life > 0);
+
+  // Water spray
+  spawnWaterSpray();
+
+  // Speed lines
+  updateSpeedLines(dt);
+
+  // --- Spawn obstacles ---
+  obstacleTimer -= dt;
+  if (obstacleTimer <= 0) {
+    createObstacle();
+    obstacleTimer = Math.max(0.6, 1.8 / speed);
+  }
+
+  // --- Spawn collectibles ---
+  collectibleTimer -= dt;
+  if (collectibleTimer <= 0) {
+    createCollectible();
+    collectibleTimer = 1 + Math.random() * 1.5;
+  }
+
+  // --- Update obstacles ---
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.worldX -= scrollSpeed * dt;
+    if (ob.worldX < -100) { obstacles.splice(i, 1); continue; }
+
+    const ox = ob.worldX;
+    const waveAtOb = getWaveY(ox);
+    // Both crabs and jellyfish sit on the wave surface
+    const oy = waveAtOb - 12;
+
+    // Collision check
+    const dx = Math.abs(ox - surferX);
+    const dy = Math.abs(oy - surferY);
+    const hw = ob.hitW / 2;
+    const hh = ob.hitH / 2;
+
+    if (dx < hw && dy < hh) {
+      // Jumping over avoids collision
+      if (isJumping && surferY < oy - 20) continue;
+      gameOver();
+      return;
+    }
+
+    // Track closest approach for near-miss (while obstacle is ahead or beside surfer)
+    if (ox >= surferX - hw) {
+      const gap = Math.sqrt(dx * dx + dy * dy) - Math.sqrt(hw * hw + hh * hh);
+      if (ob.closestGap === undefined || gap < ob.closestGap) {
+        ob.closestGap = gap;
+      }
+    }
+
+    // Near miss: triggers once the obstacle has fully passed behind the surfer
+    if (!ob.passed && ox < surferX - hw - 5) {
+      ob.passed = true;
+      if (ob.closestGap !== undefined && ob.closestGap < 20 && nearMissTimer <= 0) {
+        bonusScore += 25;
+        nearMissTimer = 0.8;
+        createPopup('CLOSE CALL! +25', surferX, surferY - 30, ORANGE);
+        spawnParticles(surferX, surferY, 6, ORANGE, 60, 40, 0.3, 100);
+      }
+    }
+  }
+  nearMissTimer -= dt;
+
+  // --- Spawn seagulls ---
+  seagullTimer -= dt;
+  if (seagullTimer <= 0) {
+    createSeagull();
+    seagullTimer = 6 + Math.random() * 8;
+  }
+
+  // --- Update seagulls ---
+  for (let i = seagulls.length - 1; i >= 0; i--) {
+    const sg = seagulls[i];
+    sg.worldX -= (scrollSpeed * sg.speed + 400) * dt;
+    sg.wingPhase += dt * 5;
+    if (sg.worldX < -60) { seagulls.splice(i, 1); continue; }
+
+    // Collision with surfer
+    const dx = Math.abs(sg.worldX - surferX);
+    const dy = Math.abs(sg.y - surferY);
+    const shw = sg.hitW / 2;
+    const shh = sg.hitH / 2;
+    if (dx < shw && dy < shh) {
+      gameOver();
+      return;
+    }
+
+    // Track closest approach
+    if (sg.worldX >= surferX - shw) {
+      const gap = Math.sqrt(dx * dx + dy * dy) - Math.sqrt(shw * shw + shh * shh);
+      if (sg.closestGap === undefined || gap < sg.closestGap) {
+        sg.closestGap = gap;
+      }
+    }
+
+    // Near miss after passing
+    if (!sg.passed && sg.worldX < surferX - shw - 5) {
+      sg.passed = true;
+      if (sg.closestGap !== undefined && sg.closestGap < 20 && nearMissTimer <= 0) {
+        bonusScore += 25;
+        nearMissTimer = 0.8;
+        createPopup('CLOSE CALL! +25', surferX, surferY - 30, ORANGE);
+        spawnParticles(surferX, surferY, 6, ORANGE, 60, 40, 0.3, 100);
+      }
+    }
+  }
+
+  // --- Update collectibles ---
+  for (let i = collectibles.length - 1; i >= 0; i--) {
+    const col = collectibles[i];
+    col.worldX -= scrollSpeed * dt;
+    col.rot += dt * 2;
+    col.pulsePhase += dt * 4;
+    if (col.worldX < -80) { collectibles.splice(i, 1); continue; }
+
+    if (col.collected) {
+      col.collectAnim += dt * 4;
+      if (col.collectAnim > 1) { collectibles.splice(i, 1); }
+      continue;
+    }
+
+    const cx = col.worldX;
+    const cy = getWaveY(cx) - col.heightAboveWave;
+    const ddx = Math.abs(cx - surferX);
+    const ddy = Math.abs(cy - surferY);
+    if (ddx < 28 && ddy < 28) {
+      col.collected = true;
+      col.collectAnim = 0;
+      bonusScore += 50;
+      createPopup('+50', cx, cy - 10, GOLD);
+      spawnParticles(cx, cy, 10, BAJA, 100, 80, 0.5, 150);
+      triggerShake(3);
+    }
+  }
+
+  // Particles physics
+  particles.forEach(p => {
+    p.vy += p.grav * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+  });
+  particles = particles.filter(p => p.life > 0);
+
+  // Popups
+  popups.forEach(p => p.life -= dt);
+  popups = popups.filter(p => p.life > 0);
+
+  // Flash timer
+  if (flashTimer > 0) flashTimer -= dt;
+
+  // Distance milestones
+  const milestoneCheck = [100, 200, 500, 750, 1000, 1500, 2000, 3000, 5000];
+  const dist = Math.floor(distance);
+  for (const m of milestoneCheck) {
+    if (dist >= m && lastMilestone < m) {
+      lastMilestone = m;
+      createPopup(`${m}m!`, W / 2, H / 2 - 50, BAJA);
+      spawnParticles(W / 2, H / 2, 20, BAJA, 200, 150, 0.8, 100);
+      spawnParticles(W / 2, H / 2, 15, GOLD, 180, 120, 0.6, 120);
+      triggerShake(6);
+    }
+  }
+
+  // Score
+  score = Math.floor(distance) + bonusScore;
+
+  // HUD
+  document.getElementById('distVal').textContent = Math.floor(distance) + ' m';
+  document.getElementById('scoreVal').textContent = score;
+  document.getElementById('speedVal').textContent = speed.toFixed(1) + 'x';
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+
+function render() {
+  const shake = getShakeOffset();
+
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+  ctx.clearRect(-10, -10, W + 20, H + 20);
+
+  // Background
+  drawSky();
+  drawStars();
+  drawSun();
+  drawClouds();
+  drawBeach(gameState === 'playing' ? 300 * speed : 30, lastDt);
+  drawDistantWaves();
+
+  // Speed lines
+  drawSpeedLines();
+
+  // Wave surface
+  drawWave();
+
+  // Surfer trail
+  drawSurferTrail();
+
+  // Obstacles (on wave surface)
+  obstacles.forEach(ob => {
+    const ox = ob.worldX;
+    const waveAtOb = getWaveY(ox);
+    if (ob.kind === 'crab') {
+      drawCrab(ox, waveAtOb - 12);
+    } else {
+      drawJellyfish(ox, waveAtOb - 12);
+    }
+  });
+
+  // Seagulls (sky obstacles)
+  seagulls.forEach(sg => {
+    drawSeagull(sg.worldX, sg.y, sg.wingPhase);
+  });
+
+  // Collectibles (Mountain Dew cans above wave)
+  collectibles.forEach(col => {
+    const cx = col.worldX;
+    const cy = getWaveY(cx) - col.heightAboveWave;
+    if (col.collected) {
+      const s = 1 + col.collectAnim * 2;
+      const a = 1 - col.collectAnim;
+      ctx.globalAlpha = a;
+      drawDewCan(cx, cy, s, col.pulsePhase);
+      ctx.globalAlpha = 1;
+    } else {
+      drawDewCan(cx, cy, 1, col.pulsePhase);
+    }
+  });
+
+  // Jump indicator
+  drawJumpIndicator();
+
+  // Surfer
+  drawSurfer(surferX, surferY, surferAngle);
+
+  // Particles
+  drawParticles();
+
+  // Score popups
+  drawPopups();
+
+  // Flash overlay
+  if (flashTimer > 0 && flashColor) {
+    ctx.fillStyle = flashColor;
+    ctx.globalAlpha = flashTimer / 0.3;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+  update(now);
+  render();
+}
+
+lastTime = performance.now();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

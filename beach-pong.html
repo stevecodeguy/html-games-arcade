@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MTN DEW Pong - Baja Beach Ball</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #0A1628; touch-action: none; font-family: 'Inter', sans-serif; }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 10;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 24px; pointer-events: none;
+  }
+  .hud-title {
+    font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: #63FFE0; text-shadow: 0 0 20px rgba(99,255,224,0.5);
+    margin-bottom: 6px;
+  }
+  .hud-row { display: flex; gap: 12px; align-items: center; }
+  .hud-box {
+    background: rgba(99,255,224,0.08);
+    border: 1.5px solid rgba(99,255,224,0.3);
+    border-radius: 14px; padding: 6px 22px;
+    color: #fff; text-align: center;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 20px rgba(99,255,224,0.1), inset 0 0 20px rgba(99,255,224,0.05);
+    min-width: 70px;
+    transition: transform 0.15s ease-out;
+  }
+  .hud-box.player-box { border-color: rgba(76,175,0,0.5); box-shadow: 0 0 20px rgba(138,226,51,0.15); }
+  .hud-box.cpu-box { border-color: rgba(204,0,0,0.5); box-shadow: 0 0 20px rgba(255,68,68,0.15); }
+  .hud-label { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; color: #63FFE0; font-family: 'Orbitron', sans-serif; }
+  .hud-value { font-size: 32px; font-weight: bold; font-family: 'Orbitron', sans-serif; color: #FFD700; }
+  .hud-sep { font-size: 28px; font-weight: bold; color: #63FFE0; font-family: 'Orbitron', sans-serif; }
+
+  #powerup-display {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 10; pointer-events: none;
+    font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700;
+    color: #FFD700; letter-spacing: 2px;
+    background: rgba(99,255,224,0.1);
+    border: 1px solid rgba(99,255,224,0.3);
+    padding: 8px 20px; border-radius: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(99,255,224,0.15);
+    display: none;
+  }
+  #powerup-display.show { display: block; }
+
+  #multiball-text {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 15; pointer-events: none;
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: 55px; color: #FFD700;
+    text-shadow: 0 0 40px rgba(255,215,0,0.8), 0 0 80px rgba(255,107,53,0.5);
+    opacity: 0; transition: opacity 0.15s, transform 0.3s;
+  }
+  #multiball-text.show { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+
+  #message {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    display: none; justify-content: center; align-items: center;
+    z-index: 20; background: rgba(10,22,40,0.7);
+    backdrop-filter: blur(6px);
+  }
+  #message.show { display: flex; }
+  .msg-panel {
+    background: rgba(99,255,224,0.08);
+    border: 2px solid rgba(99,255,224,0.4);
+    border-radius: 24px; padding: 36px 50px; text-align: center; color: #fff;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 0 40px rgba(99,255,224,0.15), inset 0 0 30px rgba(99,255,224,0.05);
+  }
+  .msg-panel h1 { font-family: 'Orbitron', sans-serif; font-size: 32px; margin-bottom: 8px; color: #63FFE0; text-shadow: 0 0 20px rgba(99,255,224,0.5); }
+  .msg-panel .score-line { font-family: 'Orbitron', sans-serif; font-size: 40px; color: #FFD700; margin: 8px 0; }
+  .msg-panel p { font-size: 18px; margin-bottom: 4px; }
+  .msg-panel .hint { margin-top: 16px; font-size: 13px; opacity: 0.55; color: #63FFE0; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="hud-title">MTN DEW PONG</div>
+  <div class="hud-row">
+    <div class="hud-box player-box">
+      <div class="hud-label">Player</div>
+      <div class="hud-value" id="p-score">0</div>
+    </div>
+    <div class="hud-sep">:</div>
+    <div class="hud-box cpu-box">
+      <div class="hud-label">CPU</div>
+      <div class="hud-value" id="c-score">0</div>
+    </div>
+  </div>
+</div>
+
+<div id="powerup-display"></div>
+<div id="multiball-text">MULTI BALL!</div>
+
+<div id="message">
+  <div class="msg-panel">
+    <h1 id="msg-title">MTN DEW Pong</h1>
+    <div class="score-line" id="msg-score" style="display:none"></div>
+    <p id="msg-body">First to 7 wins!</p>
+    <div class="hint" id="msg-hint">Tap or press Space to start</div>
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ============================================================
+// MTN DEW PONG - Baja Beach Ball (Canvas2D - Fully Juiced)
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const BAJA_TEAL = '#63FFE0';
+const BAJA_LIGHT = '#34FFB9';
+const BAJA_DARK = '#00CED1';
+const ACCENT_ORANGE = '#FF6B35';
+const ACCENT_PURPLE = '#8B5CF6';
+const GOLD = '#FFD700';
+
+let W, H;
+function resizeCanvas() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const VIEW_W = 24;
+function worldH() { return VIEW_W * (H / W); }
+function worldToScreen(wx, wy) {
+  const scale = W / VIEW_W;
+  const wh = worldH();
+  return { x: (wx + VIEW_W / 2) * scale, y: H - (wy + wh / 2) * scale };
+}
+function screenToWorld(sx, sy) {
+  const scale = W / VIEW_W;
+  const wh = worldH();
+  return { x: sx / scale - VIEW_W / 2, y: (H - sy) / scale - wh / 2 };
+}
+function wScale() { return W / VIEW_W; }
+
+// ============================================================
+// SCREEN SHAKE
+// ============================================================
+let shakeIntensity = 0;
+function triggerShake(intensity) { shakeIntensity = Math.max(shakeIntensity, intensity); }
+function getShakeOffset() {
+  if (shakeIntensity > 0.5) {
+    const ox = (Math.random() - 0.5) * shakeIntensity;
+    const oy = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.85;
+    return { x: ox, y: oy };
+  }
+  shakeIntensity = 0;
+  return { x: 0, y: 0 };
+}
+
+// ============================================================
+// BEACH BALL TEXTURE
+// ============================================================
+// MTN DEW flavor colors for the beach ball panels
+const DEW_PANEL_COLORS = ['#00B4A0', '#FFFFFF', '#CC0000', '#FFFFFF', '#4CAF00', '#FFFFFF', '#E85D00', '#FFFFFF'];
+
+function createBeachBallTexture(size) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const cx2 = c.getContext('2d');
+  const cx = size/2, cy = size/2, r = size/2 - 3;
+  const n = DEW_PANEL_COLORS.length, a = Math.PI*2/n;
+
+  // Draw panels
+  for (let i = 0; i < n; i++) {
+    cx2.beginPath(); cx2.moveTo(cx, cy);
+    cx2.arc(cx, cy, r, i*a - Math.PI/2, (i+1)*a - Math.PI/2);
+    cx2.closePath(); cx2.fillStyle = DEW_PANEL_COLORS[i]; cx2.fill();
+  }
+
+  // Seam lines
+  cx2.strokeStyle = 'rgba(0,0,0,0.08)';
+  cx2.lineWidth = 1.5;
+  for (let i = 0; i < n; i++) {
+    const angle = i * a - Math.PI/2;
+    cx2.beginPath(); cx2.moveTo(cx, cy);
+    cx2.lineTo(cx + Math.cos(angle)*r, cy + Math.sin(angle)*r);
+    cx2.stroke();
+  }
+
+  // "DEW" text stamped on ball
+  cx2.save();
+  cx2.fillStyle = 'rgba(255,255,255,0.25)';
+  cx2.font = `bold ${Math.floor(size * 0.18)}px "Orbitron", "Arial Black", sans-serif`;
+  cx2.textAlign = 'center';
+  cx2.textBaseline = 'middle';
+  cx2.fillText('DEW', cx, cy + 2);
+  cx2.restore();
+
+  // Outline
+  cx2.beginPath(); cx2.arc(cx, cy, r, 0, Math.PI*2);
+  cx2.strokeStyle='rgba(0,0,0,0.1)'; cx2.lineWidth=2; cx2.stroke();
+
+  // Specular highlight
+  const g = cx2.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.02, cx, cy, r*0.8);
+  g.addColorStop(0, 'rgba(255,255,255,0.65)');
+  g.addColorStop(0.3, 'rgba(255,255,255,0.2)');
+  g.addColorStop(0.7, 'rgba(255,255,255,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.04)');
+  cx2.fillStyle = g; cx2.beginPath(); cx2.arc(cx, cy, r, 0, Math.PI*2); cx2.fill();
+  return c;
+}
+const ballImg = createBeachBallTexture(256);
+const extraBallImg = createBeachBallTexture(128);
+
+// ============================================================
+// BACKGROUND
+// ============================================================
+const waveLines = [];
+for (let i = 0; i < 8; i++) {
+  waveLines.push({
+    baseY: -worldH()/2 + worldH() * 0.1 + i * (worldH() * 0.12),
+    speed: 0.3 + i * 0.12,
+    amp: 0.1 + i * 0.04,
+    opacity: 0.06 + i * 0.015
+  });
+}
+
+function drawBackground(time) {
+  const wh = worldH();
+  const s = wScale();
+
+  // Ocean gradient
+  const oceanGrad = ctx.createLinearGradient(0, 0, 0, H);
+  oceanGrad.addColorStop(0, '#0B1D3A');
+  oceanGrad.addColorStop(0.3, '#0A3A5C');
+  oceanGrad.addColorStop(0.6, '#005577');
+  oceanGrad.addColorStop(1, '#003344');
+  ctx.fillStyle = oceanGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle teal ambient glow from center
+  const ambientGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W * 0.6);
+  ambientGrad.addColorStop(0, 'rgba(99,255,224,0.04)');
+  ambientGrad.addColorStop(1, 'rgba(99,255,224,0)');
+  ctx.fillStyle = ambientGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Sand strip at bottom
+  const sandH = wh * 0.06;
+  const sandScreenTop = worldToScreen(0, -wh/2 + sandH).y;
+  const sandGrad = ctx.createLinearGradient(0, sandScreenTop, 0, H);
+  sandGrad.addColorStop(0, 'rgba(244,208,63,0.2)');
+  sandGrad.addColorStop(1, 'rgba(184,134,11,0.15)');
+  ctx.fillStyle = sandGrad;
+  ctx.fillRect(0, sandScreenTop, W, H - sandScreenTop);
+
+  // Animated wave lines
+  for (const w of waveLines) {
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(99,255,224,${w.opacity})`;
+    ctx.lineWidth = 1.5;
+    const waveY = w.baseY + Math.sin(time * w.speed) * w.amp;
+    for (let x = -VIEW_W/2; x <= VIEW_W/2; x += 0.15) {
+      const sy = waveY + Math.sin(x * 1.2 + time * w.speed * 2) * w.amp * 0.5;
+      const sp = worldToScreen(x, sy);
+      if (x === -VIEW_W/2) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y);
+    }
+    ctx.stroke();
+  }
+
+  // Center line (dashed, Baja teal)
+  ctx.strokeStyle = 'rgba(99,255,224,0.12)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 12]);
+  const centerTop = worldToScreen(0, wh/2);
+  const centerBot = worldToScreen(0, -wh/2);
+  ctx.beginPath();
+  ctx.moveTo(centerTop.x, centerTop.y);
+  ctx.lineTo(centerBot.x, centerBot.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ============================================================
+// PADDLES
+// ============================================================
+const PADDLE_W = 0.55;
+const PADDLE_H_BASE = 3.0;
+let paddleLH = PADDLE_H_BASE, paddleRH = PADDLE_H_BASE;
+const PADDLE_X = VIEW_W / 2 - 1.5;
+
+function drawPaddle(x, y, h, color, glowColor, time) {
+  const s = wScale();
+  const pos = worldToScreen(x, y);
+  const pw = PADDLE_W * s;
+  const ph = h * s;
+
+  // Glow aura
+  const glowGrad = ctx.createRadialGradient(pos.x, pos.y, pw, pos.x, pos.y, pw + 20 + Math.sin(time * 3) * 5);
+  glowGrad.addColorStop(0, glowColor.replace(')', ',0.25)').replace('rgb', 'rgba'));
+  glowGrad.addColorStop(1, glowColor.replace(')', ',0)').replace('rgb', 'rgba'));
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(pos.x - pw - 20, pos.y - ph/2 - 20, pw * 2 + 40, ph + 40);
+
+  // Paddle body (rounded rect)
+  const radius = pw * 0.8;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  const bx = pos.x - pw/2;
+  const by = pos.y - ph/2;
+  ctx.moveTo(bx + radius, by);
+  ctx.lineTo(bx + pw - radius, by);
+  ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + radius);
+  ctx.lineTo(bx + pw, by + ph - radius);
+  ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - radius, by + ph);
+  ctx.lineTo(bx + radius, by + ph);
+  ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - radius);
+  ctx.lineTo(bx, by + radius);
+  ctx.quadraticCurveTo(bx, by, bx + radius, by);
+  ctx.closePath();
+  ctx.fill();
+
+  // Center stripe highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(pos.x - pw * 0.15, pos.y - ph/2 + 4, pw * 0.3, ph - 8);
+
+  // Stringer line
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pos.x, pos.y - ph/2 + 6);
+  ctx.lineTo(pos.x, pos.y + ph/2 - 6);
+  ctx.stroke();
+
+  // "DEW" text on paddle (vertical)
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = `bold ${Math.max(8, Math.floor(pw * 0.7))}px "Orbitron", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('MTN DEW', 0, 0);
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(bx + radius, by);
+  ctx.lineTo(bx + pw - radius, by);
+  ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + radius);
+  ctx.lineTo(bx + pw, by + ph - radius);
+  ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - radius, by + ph);
+  ctx.lineTo(bx + radius, by + ph);
+  ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - radius);
+  ctx.lineTo(bx, by + radius);
+  ctx.quadraticCurveTo(bx, by, bx + radius, by);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// ============================================================
+// PARTICLES & EFFECTS
+// ============================================================
+let particles = [];
+let shockwaves = [];
+let ballTrail = [];
+let speedLines = [];
+const MAX_TRAIL = 18;
+
+function spawnImpactParticles(x, y, count, colors) {
+  const defaultColors = [BAJA_TEAL, BAJA_LIGHT, '#FFFFFF', GOLD];
+  const cols = colors || defaultColors;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    particles.push({
+      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: 0.5 + Math.random() * 0.3, maxLife: 0.8,
+      size: 0.04 + Math.random() * 0.08,
+      color: cols[Math.floor(Math.random() * cols.length)], gravity: false
+    });
+  }
+}
+
+function spawnShockwave(x, y, maxR) {
+  shockwaves.push({ x, y, radius: 0.2, maxRadius: maxR || 2.5, alpha: 0.6 });
+}
+
+function spawnPowerupBurst(x, y, color) {
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 4;
+    particles.push({
+      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: 0.6 + Math.random() * 0.3, maxLife: 0.9,
+      size: 0.06 + Math.random() * 0.1,
+      color: color, gravity: false
+    });
+  }
+}
+
+let hitFlashAlpha = 0, hitFlashX = 0, hitFlashY = 0;
+let screenFlashAlpha = 0;
+
+// ============================================================
+// POWER-UPS
+// ============================================================
+const POWERUP_TYPES = [
+  { id: 'speed', label: 'SPEED BOOST', color: ACCENT_ORANGE, hexColor: '#FF6B35', canBg: '#E85D00', canAccent: '#FFB347', canName: 'LIVE\nWIRE' },
+  { id: 'bigpaddle', label: 'BIG PADDLE', color: '#4CAF00', hexColor: '#4CAF00', canBg: '#4CAF00', canAccent: '#8AE233', canName: 'MTN\nDEW' },
+  { id: 'multiball', label: 'MULTI BALL', color: GOLD, hexColor: '#CC0000', canBg: '#CC0000', canAccent: '#FF4444', canName: 'CODE\nRED' },
+];
+let powerups = [];
+let activePowerL = null, activePowerR = null;
+let powerTimerL = 0, powerTimerR = 0;
+const POWER_DURATION = 6;
+let powerupSpawnTimer = 0;
+const POWERUP_INTERVAL = 8;
+
+function spawnPowerup() {
+  const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+  const py = (Math.random() - 0.5) * (worldH() - 3);
+  powerups.push({
+    type: type.id, label: type.label, color: type.color, hexColor: type.hexColor,
+    x: (Math.random() - 0.5) * 6,
+    y: py,
+    vx: (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random()),
+    vy: (Math.random() - 0.5) * 0.5,
+    life: 10,
+    rot: 0, pulsePhase: Math.random() * Math.PI * 2
+  });
+}
+
+function drawPowerup(pu, time) {
+  const s = wScale();
+  const pos = worldToScreen(pu.x, pu.y);
+  const pulse = 1 + Math.sin(time * 4 + pu.pulsePhase) * 0.08;
+  const canW = 0.55 * s * pulse;
+  const canH = 0.85 * s * pulse;
+  const canR = canW * 0.3;
+  const type = POWERUP_TYPES.find(t => t.id === pu.type);
+
+  // Pulsing glow aura
+  const glowGrad = ctx.createRadialGradient(pos.x, pos.y, canH * 0.3, pos.x, pos.y, canH * 2);
+  glowGrad.addColorStop(0, hexToRGBA(type.canAccent, 0.35));
+  glowGrad.addColorStop(1, hexToRGBA(type.canAccent, 0));
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, canH * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+  ctx.rotate(Math.sin(time * 1.5 + pu.pulsePhase) * 0.15); // gentle wobble
+
+  const cx = 0, cy = 0;
+  const x = cx - canW / 2, y = cy - canH / 2;
+
+  // Can body gradient (metallic)
+  const bodyGrad = ctx.createLinearGradient(x, cy, x + canW, cy);
+  bodyGrad.addColorStop(0, darkenHex(type.canBg, 30));
+  bodyGrad.addColorStop(0.35, type.canBg);
+  bodyGrad.addColorStop(0.5, lightenHex(type.canBg, 35));
+  bodyGrad.addColorStop(0.65, type.canBg);
+  bodyGrad.addColorStop(1, darkenHex(type.canBg, 40));
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(x, y, canW, canH, canR);
+  ctx.fill();
+
+  // Silver top rim
+  const rimH = canH * 0.1;
+  const rimGrad = ctx.createLinearGradient(x, y, x + canW, y);
+  rimGrad.addColorStop(0, '#999'); rimGrad.addColorStop(0.5, '#EEE'); rimGrad.addColorStop(1, '#999');
+  ctx.fillStyle = rimGrad;
+  ctx.beginPath();
+  ctx.roundRect(x, y, canW, rimH, canR);
+  ctx.fill();
+
+  // Silver bottom rim
+  ctx.fillStyle = rimGrad;
+  ctx.beginPath();
+  ctx.roundRect(x, y + canH - rimH, canW, rimH, canR);
+  ctx.fill();
+
+  // Accent stripe
+  ctx.fillStyle = type.canAccent;
+  ctx.globalAlpha = 0.3;
+  ctx.fillRect(x, cy - canH * 0.08, canW, canH * 0.16);
+  ctx.globalAlpha = 1;
+
+  // "DEW" text
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `bold ${Math.max(6, Math.floor(canW * 0.38))}px "Orbitron", sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('DEW', cx, cy - canH * 0.12);
+
+  // Flavor label
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = `bold ${Math.max(5, Math.floor(canW * 0.28))}px "Orbitron", sans-serif`;
+  const lines = type.canName.split('\n');
+  lines.forEach((ln, i) => {
+    ctx.fillText(ln, cx, cy + canH * 0.08 + i * (canW * 0.28));
+  });
+
+  // Specular highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(x + canW * 0.08, y + rimH, canW * 0.2, canH - rimH * 2);
+
+  // Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x, y, canW, canH, canR);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function lightenHex(hex, amt) {
+  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;
+}
+function darkenHex(hex, amt) {
+  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
+}
+
+function hexToRGBA(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function applyPower(side, typeId) {
+  const type = POWERUP_TYPES.find(t => t.id === typeId);
+  if (side === 'left') { activePowerL = typeId; powerTimerL = POWER_DURATION; }
+  else { activePowerR = typeId; powerTimerR = POWER_DURATION; }
+
+  const puDisp = document.getElementById('powerup-display');
+  puDisp.textContent = (side === 'left' ? 'PLAYER' : 'CPU') + ': ' + type.label;
+  puDisp.classList.add('show');
+  setTimeout(() => puDisp.classList.remove('show'), 2500);
+
+  if (typeId === 'bigpaddle') {
+    if (side === 'left') paddleLH = PADDLE_H_BASE * 1.6;
+    else paddleRH = PADDLE_H_BASE * 1.6;
+  }
+  if (typeId === 'multiball') {
+    showMultiballText();
+    spawnExtraBall();
+  }
+}
+
+function clearPower(side) {
+  if (side === 'left') { activePowerL = null; paddleLH = PADDLE_H_BASE; }
+  else { activePowerR = null; paddleRH = PADDLE_H_BASE; }
+}
+
+// ============================================================
+// MULTI-BALL TEXT
+// ============================================================
+const multiballEl = document.getElementById('multiball-text');
+let multiballTimeout = null;
+function showMultiballText() {
+  multiballEl.classList.add('show');
+  screenFlashAlpha = 0.5;
+  triggerShake(12);
+  if (multiballTimeout) clearTimeout(multiballTimeout);
+  multiballTimeout = setTimeout(() => multiballEl.classList.remove('show'), 1500);
+}
+
+// ============================================================
+// EXTRA BALLS
+// ============================================================
+let extraBalls = [];
+
+function spawnExtraBall() {
+  extraBalls.push({
+    x: 0, y: 0,
+    vx: (Math.random() > 0.5 ? 1 : -1) * (6 + Math.random() * 3),
+    vy: (Math.random() - 0.5) * 6,
+    spin: 0, life: 8
+  });
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const WIN_SCORE = 7;
+let pScore = 0, cScore = 0;
+let gameState = 'start';
+
+const BALL_R = 0.5;
+let bx = 0, by = 0, bvx = 0, bvy = 0, bSpin = 0;
+const BASE_SPEED = 10.5;
+let speedMult = 1;
+let rallySpeedMult = 1;  // increases 5% per bat hit
+
+// Ball squash
+let ballSquashX = 1, ballSquashY = 1;
+
+// Slow-mo for scoring
+let slowMo = 1;
+let slowMoTimer = 0;
+
+// Paddle positions
+let plY = 0, prY = 0, plVY = 0;
+let lastHitter = 'left'; // tracks who hit the ball last: 'left' (player) or 'right' (cpu)
+
+// CPU rally-whiff system: miss every 3-10 rallies
+let cpuRallyCount = 0;          // how many times CPU has hit the ball this round
+let cpuWhiffAt = 0;             // the rally number where CPU will deliberately miss
+let cpuWhiffThisRally = false;  // true when CPU should miss the current ball
+
+function resetCpuWhiff() {
+  cpuRallyCount = 0;
+  cpuWhiffAt = 3 + Math.floor(Math.random() * 8); // miss after 3-10 hits
+  cpuWhiffThisRally = false;
+}
+resetCpuWhiff();
+
+// Score scales
+let pScoreScale = 1, cScoreScale = 1;
+
+// Input
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+let touchActiveL = null, touchActiveR = null;
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.clientX < window.innerWidth / 2) {
+      touchActiveL = { id: t.identifier, startY: t.clientY, currentY: t.clientY };
+    } else {
+      touchActiveR = { id: t.identifier, startY: t.clientY, currentY: t.clientY };
+    }
+  }
+  if (gameState === 'start' || gameState === 'gameover') startNewGame();
+  else if (gameState === 'point') serve();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (touchActiveL && t.identifier === touchActiveL.id) touchActiveL.currentY = t.clientY;
+    if (touchActiveR && t.identifier === touchActiveR.id) touchActiveR.currentY = t.clientY;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (touchActiveL && t.identifier === touchActiveL.id) touchActiveL = null;
+    if (touchActiveR && t.identifier === touchActiveR.id) touchActiveR = null;
+  }
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    if (gameState === 'start' || gameState === 'gameover') startNewGame();
+    else if (gameState === 'point') serve();
+  }
+});
+
+// HUD
+const pScoreEl = document.getElementById('p-score');
+const cScoreEl = document.getElementById('c-score');
+const msgEl = document.getElementById('message');
+const msgTitle = document.getElementById('msg-title');
+const msgBody = document.getElementById('msg-body');
+const msgHint = document.getElementById('msg-hint');
+const msgScore = document.getElementById('msg-score');
+
+function showMsg(title, body, hint, scoreText) {
+  msgTitle.textContent = title;
+  msgBody.textContent = body;
+  msgHint.textContent = hint || '';
+  if (scoreText) { msgScore.textContent = scoreText; msgScore.style.display = 'block'; }
+  else { msgScore.style.display = 'none'; }
+  msgEl.classList.add('show');
+}
+function hideMsg() { msgEl.classList.remove('show'); }
+
+showMsg('Beach Ball Pong', 'First to 7 wins!', 'Tap or press Space to start');
+
+function startNewGame() {
+  pScore = 0; cScore = 0;
+  pScoreEl.textContent = '0'; cScoreEl.textContent = '0';
+  speedMult = 1;
+  clearPower('left'); clearPower('right');
+  extraBalls = [];
+  powerups = [];
+  powerupSpawnTimer = POWERUP_INTERVAL * 0.5;
+  hideMsg();
+  serve();
+}
+
+function serve() {
+  hideMsg();
+  gameState = 'playing';
+  bx = 0; by = 0;
+  const angle = (Math.random() - 0.5) * 0.8;
+  const dir = (pScore + cScore) % 2 === 0 ? 1 : -1;
+  bvx = Math.cos(angle) * BASE_SPEED * dir;
+  bvy = Math.sin(angle) * BASE_SPEED;
+  bSpin = 0;
+  plY = 0; prY = 0;
+  ballTrail.length = 0;
+  ballSquashX = 1; ballSquashY = 1;
+  slowMo = 1;
+  rallySpeedMult = 1; // reset speed buildup each serve
+  lastHitter = 'left'; // default to player on serve
+  resetCpuWhiff(); // new rally, pick new whiff threshold
+}
+
+function scorePoint(forPlayer) {
+  if (forPlayer) { pScore++; pScoreEl.textContent = pScore; pScoreScale = 1.6; }
+  else { cScore++; cScoreEl.textContent = cScore; cScoreScale = 1.6; }
+
+  extraBalls = [];
+  triggerShake(10);
+  spawnImpactParticles(bx, by, 20);
+
+  if (pScore >= WIN_SCORE || cScore >= WIN_SCORE) {
+    gameState = 'gameover';
+    const w = pScore >= WIN_SCORE ? 'You Win!' : 'CPU Wins!';
+    showMsg(w, '', 'Tap or press Space to play again', pScore + ' - ' + cScore);
+    triggerShake(18);
+    screenFlashAlpha = 0.4;
+  } else {
+    gameState = 'point';
+    showMsg(forPlayer ? 'Your Point!' : 'CPU Point!', '', 'Tap or Space to continue', pScore + ' - ' + cScore);
+  }
+  speedMult += 0.03;
+}
+
+// ============================================================
+// UPDATE
+// ============================================================
+function update(dt) {
+  if (gameState !== 'playing') return;
+
+  // Slow-mo handling
+  if (slowMoTimer > 0) {
+    slowMoTimer -= dt;
+    slowMo = 0.2;
+    if (slowMoTimer <= 0) slowMo = 1;
+  }
+  const effectiveDt = dt * slowMo;
+
+  const PADDLE_SPEED = 11;
+  const halfH = worldH() / 2;
+
+  // Left paddle input
+  let plTarget = plY;
+  const prevPlY = plY;
+  if (keys['KeyW'] || keys['ArrowUp']) plTarget = plY + PADDLE_SPEED * effectiveDt;
+  if (keys['KeyS'] || keys['ArrowDown']) plTarget = plY - PADDLE_SPEED * effectiveDt;
+  if (touchActiveL) {
+    const normY = 1 - (touchActiveL.currentY / window.innerHeight);
+    plTarget = (normY - 0.5) * worldH();
+  }
+  plY = plTarget;
+  const plHalfH = paddleLH / 2;
+  if (plY + plHalfH > halfH) plY = halfH - plHalfH;
+  if (plY - plHalfH < -halfH) plY = -halfH + plHalfH;
+  plVY = (plY - prevPlY) / Math.max(effectiveDt, 0.001);
+
+  // Right paddle AI - rally-based: deliberately misses every 3-10 rallies
+  const aiSpeed = 7;
+  let targetY = by;
+  let aiIsWhiffing = false;
+
+  if (cpuWhiffThisRally) {
+    // CPU is committed to missing: drift to wrong position
+    aiIsWhiffing = true;
+    // Move to opposite side of where ball will land
+    if (bvx > 0) {
+      const timeToArrive = (PADDLE_X - bx) / Math.max(bvx, 0.1);
+      const realTarget = by + bvy * timeToArrive * 0.6;
+      // Go to the wrong side - if ball goes high, go low and vice versa
+      targetY = -realTarget * 0.7 + Math.sin(totalTime * 3) * 1.5;
+    } else {
+      targetY = Math.sin(totalTime * 2) * halfH * 0.5;
+    }
+  } else {
+    // Normal tracking - decent but not perfect
+    if (bvx > 0) {
+      const timeToArrive = (PADDLE_X - bx) / Math.max(bvx, 0.1);
+      targetY = by + bvy * timeToArrive * 0.65;
+    }
+    // Small natural wobble to look organic
+    targetY += Math.sin(totalTime * 2) * 0.6;
+
+    // When ball is on player side, drift lazily
+    if (bvx < 0) {
+      targetY = prY * 0.95 + Math.sin(totalTime * 0.8) * 0.5;
+    }
+  }
+
+  const diff = targetY - prY;
+  const deadZone = aiIsWhiffing ? 0.3 : 0.5;
+  const speedFactor = aiIsWhiffing ? 0.9 : 0.7;
+  if (Math.abs(diff) > deadZone) {
+    const moveAmt = Math.sign(diff) * Math.min(Math.abs(diff) * speedFactor, aiSpeed * effectiveDt);
+    prY += moveAmt;
+  }
+  if (touchActiveR) {
+    const normY = 1 - (touchActiveR.currentY / window.innerHeight);
+    prY = (normY - 0.5) * worldH();
+  }
+  const prHalfH = paddleRH / 2;
+  if (prY + prHalfH > halfH) prY = halfH - prHalfH;
+  if (prY - prHalfH < -halfH) prY = -halfH + prHalfH;
+
+  // Ball physics
+  bvy += bSpin * effectiveDt * 2;
+  bSpin *= (1 - effectiveDt * 1.5);
+
+  let currentSpeedMult = speedMult;
+  if ((activePowerL === 'speed' && bvx < 0) || (activePowerR === 'speed' && bvx > 0)) {
+    currentSpeedMult *= 1.4;
+  }
+
+  bx += bvx * currentSpeedMult * effectiveDt;
+  by += bvy * currentSpeedMult * effectiveDt;
+
+  // Top/bottom bounce
+  if (by + BALL_R > halfH) { by = halfH - BALL_R; bvy = -Math.abs(bvy); triggerShake(2); spawnImpactParticles(bx, by, 5); }
+  if (by - BALL_R < -halfH) { by = -halfH + BALL_R; bvy = Math.abs(bvy); triggerShake(2); spawnImpactParticles(bx, by, 5); }
+
+  // Ball trail
+  ballTrail.push({ x: bx, y: by, age: 0 });
+  if (ballTrail.length > MAX_TRAIL) ballTrail.shift();
+
+  // Left paddle collision
+  if (bvx < 0 && bx - BALL_R <= -PADDLE_X + PADDLE_W/2 && bx - BALL_R > -PADDLE_X - PADDLE_W/2 - 1) {
+    if (by > plY - paddleLH/2 - BALL_R && by < plY + paddleLH/2 + BALL_R) {
+      lastHitter = 'left';
+      bx = -PADDLE_X + PADDLE_W/2 + BALL_R;
+      bvx = Math.abs(bvx);
+      const hitPos = (by - plY) / (paddleLH / 2);
+      bvy = hitPos * BASE_SPEED * 0.8;
+      bSpin = plVY * 0.15;
+      const spd = Math.sqrt(bvx*bvx + bvy*bvy);
+      rallySpeedMult *= 1.05;
+      const boost = BASE_SPEED * rallySpeedMult;
+      const angle = Math.atan2(bvy, bvx);
+      bvx = Math.cos(angle) * boost;
+      bvy = Math.sin(angle) * boost;
+
+      // Effects
+      spawnImpactParticles(bx, by, 12);
+      spawnShockwave(bx, by, 2);
+      triggerShake(5);
+      hitFlashAlpha = 0.5; hitFlashX = bx; hitFlashY = by;
+      ballSquashX = 1.4; ballSquashY = 0.6;
+    }
+  }
+
+  // Right paddle collision (CPU)
+  if (bvx > 0 && bx + BALL_R >= PADDLE_X - PADDLE_W/2 && bx + BALL_R < PADDLE_X + PADDLE_W/2 + 1) {
+    if (by > prY - paddleRH/2 - BALL_R && by < prY + paddleRH/2 + BALL_R) {
+      lastHitter = 'right';
+      bx = PADDLE_X - PADDLE_W/2 - BALL_R;
+      bvx = -Math.abs(bvx);
+      const hitPos = (by - prY) / (paddleRH / 2);
+      bvy = hitPos * BASE_SPEED * 0.8;
+      bSpin = -plVY * 0.1;
+      const spd = Math.sqrt(bvx*bvx + bvy*bvy);
+      rallySpeedMult *= 1.05;
+      const boost = BASE_SPEED * rallySpeedMult;
+      const angle = Math.atan2(bvy, bvx);
+      bvx = Math.cos(angle) * boost;
+      bvy = Math.sin(angle) * boost;
+
+      spawnImpactParticles(bx, by, 12);
+      spawnShockwave(bx, by, 2);
+      triggerShake(5);
+      hitFlashAlpha = 0.5; hitFlashX = bx; hitFlashY = by;
+      ballSquashX = 1.4; ballSquashY = 0.6;
+
+      // Rally counter: CPU successfully hit, count it
+      cpuRallyCount++;
+      // If CPU reached its whiff threshold, next ball it will deliberately miss
+      if (cpuRallyCount >= cpuWhiffAt) {
+        cpuWhiffThisRally = true;
+      }
+    }
+  }
+
+  // When ball crosses back to CPU side heading right, check if CPU should whiff
+  // (ball just left player's side going toward CPU)
+  if (bvx > 0 && bx > 0 && !cpuWhiffThisRally && cpuRallyCount >= cpuWhiffAt) {
+    cpuWhiffThisRally = true;
+  }
+
+  // Dramatic slow-mo near scoring
+  if (bx < -PADDLE_X - 0.5 || bx > PADDLE_X + 0.5) {
+    if (slowMoTimer <= 0 && slowMo === 1) {
+      slowMoTimer = 0.3;
+    }
+  }
+
+  // Scoring
+  if (bx < -VIEW_W / 2 - 1) scorePoint(false);
+  if (bx > VIEW_W / 2 + 1) scorePoint(true);
+
+  // Ball squash decay
+  const speed = Math.sqrt(bvx * bvx + bvy * bvy);
+  if (speed > 6) {
+    const angle = Math.atan2(bvy, bvx);
+    const sf = 1 + (speed - 6) * 0.015;
+    // Stretch along velocity direction
+    ballSquashX += (sf - ballSquashX) * 5 * dt;
+    ballSquashY += (1/Math.sqrt(sf) - ballSquashY) * 5 * dt;
+  } else {
+    ballSquashX += (1 - ballSquashX) * 8 * dt;
+    ballSquashY += (1 - ballSquashY) * 8 * dt;
+  }
+
+  // Speed lines - only during speed boost power-up
+  if ((activePowerL === 'speed' || activePowerR === 'speed') && speed > 6) {
+    const angle = Math.atan2(-bvy, -bvx);
+    for (let i = 0; i < 2; i++) {
+      const spread = (Math.random() - 0.5) * 0.5;
+      speedLines.push({
+        x: bx + Math.cos(angle + spread) * BALL_R,
+        y: by + Math.sin(angle + spread) * BALL_R,
+        vx: Math.cos(angle + spread) * speed * 0.3,
+        vy: Math.sin(angle + spread) * speed * 0.3,
+        life: 0.2 + Math.random() * 0.1,
+        maxLife: 0.3,
+        length: 0.3 + Math.random() * 0.5,
+        angle: angle + spread
+      });
+    }
+  }
+
+  // Power-ups
+  powerupSpawnTimer -= dt;
+  if (powerupSpawnTimer <= 0 && powerups.length < 2) {
+    spawnPowerup();
+    powerupSpawnTimer = POWERUP_INTERVAL + Math.random() * 4;
+  }
+
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const pu = powerups[i];
+    pu.x += pu.vx * effectiveDt;
+    pu.y += pu.vy * effectiveDt;
+    pu.life -= dt;
+    pu.rot += dt * 1.5;
+    if (pu.x < -VIEW_W/2 + 1) pu.vx = Math.abs(pu.vx);
+    if (pu.x > VIEW_W/2 - 1) pu.vx = -Math.abs(pu.vx);
+    if (pu.y < -worldH()/2 + 1) pu.vy = Math.abs(pu.vy);
+    if (pu.y > worldH()/2 - 1) pu.vy = -Math.abs(pu.vy);
+
+    // Ball collects power-up - applies to whoever hit the ball last
+    const dx = bx - pu.x, dy = by - pu.y;
+    if (Math.sqrt(dx*dx + dy*dy) < BALL_R + 0.5) {
+      spawnPowerupBurst(pu.x, pu.y, pu.hexColor);
+      applyPower(lastHitter, pu.type);
+      powerups.splice(i, 1);
+      triggerShake(6);
+      continue;
+    }
+
+    // Player paddle collects power-up (touch can with bat)
+    const plPaddleX = -PADDLE_X;
+    const plDx = Math.abs(pu.x - plPaddleX);
+    const plDy = Math.abs(pu.y - plY);
+    if (plDx < PADDLE_W / 2 + 0.5 && plDy < paddleLH / 2 + 0.4) {
+      spawnPowerupBurst(pu.x, pu.y, pu.hexColor);
+      applyPower('left', pu.type);
+      powerups.splice(i, 1);
+      triggerShake(6);
+      continue;
+    }
+
+    // CPU paddle collects power-up (touch can with bat)
+    const cpuDx = Math.abs(pu.x - PADDLE_X);
+    const cpuDy = Math.abs(pu.y - prY);
+    if (cpuDx < PADDLE_W / 2 + 0.5 && cpuDy < paddleRH / 2 + 0.4) {
+      spawnPowerupBurst(pu.x, pu.y, pu.hexColor);
+      applyPower('right', pu.type);
+      powerups.splice(i, 1);
+      triggerShake(6);
+      continue;
+    }
+
+    if (pu.life <= 0) { powerups.splice(i, 1); }
+  }
+
+  // Power timers
+  if (activePowerL) { powerTimerL -= dt; if (powerTimerL <= 0) clearPower('left'); }
+  if (activePowerR) { powerTimerR -= dt; if (powerTimerR <= 0) clearPower('right'); }
+
+  // Extra balls
+  for (let i = extraBalls.length - 1; i >= 0; i--) {
+    const eb = extraBalls[i];
+    eb.x += eb.vx * effectiveDt;
+    eb.y += eb.vy * effectiveDt;
+    eb.life -= dt;
+    eb.spin += dt * 3;
+    if (eb.y + BALL_R > halfH || eb.y - BALL_R < -halfH) eb.vy = -eb.vy;
+    if (eb.vx < 0 && eb.x < -PADDLE_X + 1 && Math.abs(eb.y - plY) < paddleLH/2) { eb.vx = Math.abs(eb.vx); spawnImpactParticles(eb.x, eb.y, 5); }
+    if (eb.vx > 0 && eb.x > PADDLE_X - 1 && Math.abs(eb.y - prY) < paddleRH/2) { eb.vx = -Math.abs(eb.vx); spawnImpactParticles(eb.x, eb.y, 5); }
+    // Extra ball scores a point if it passes a paddle
+    if (eb.x < -VIEW_W/2 - 1) {
+      spawnImpactParticles(eb.x, eb.y, 12);
+      triggerShake(8);
+      scorePoint(false); // CPU scores - this clears extraBalls
+      break; // extraBalls was cleared by scorePoint
+    }
+    if (eb.x > VIEW_W/2 + 1) {
+      spawnImpactParticles(eb.x, eb.y, 12);
+      triggerShake(8);
+      scorePoint(true); // Player scores - this clears extraBalls
+      break; // extraBalls was cleared by scorePoint
+    }
+    if (eb.life <= 0) {
+      extraBalls.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+let lastTime = performance.now();
+let totalTime = 0;
+
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  totalTime += dt;
+
+  update(dt);
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.96; p.vy *= 0.96;
+    p.life -= dt * 2;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Update shockwaves
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const sw = shockwaves[i];
+    sw.radius += sw.maxRadius * 3 * dt;
+    sw.alpha -= dt * 2.5;
+    if (sw.alpha <= 0) shockwaves.splice(i, 1);
+  }
+
+  // Update speed lines
+  for (let i = speedLines.length - 1; i >= 0; i--) {
+    const sl = speedLines[i];
+    sl.x += sl.vx * dt; sl.y += sl.vy * dt;
+    sl.life -= dt;
+    if (sl.life <= 0) speedLines.splice(i, 1);
+  }
+
+  // Update trail ages
+  for (const t of ballTrail) t.age += dt;
+
+  // Decay effects
+  hitFlashAlpha *= 0.88;
+  if (hitFlashAlpha < 0.01) hitFlashAlpha = 0;
+  screenFlashAlpha *= 0.92;
+  if (screenFlashAlpha < 0.01) screenFlashAlpha = 0;
+
+  // Score animation
+  pScoreScale += (1 - pScoreScale) * 5 * dt;
+  cScoreScale += (1 - cScoreScale) * 5 * dt;
+  pScoreEl.style.transform = `scale(${pScoreScale})`;
+  cScoreEl.style.transform = `scale(${cScoreScale})`;
+
+  // --- RENDER ---
+  const shake = getShakeOffset();
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+
+  drawBackground(totalTime);
+
+  const s = wScale();
+
+  // Paddles
+  drawPaddle(-PADDLE_X, plY, paddleLH, '#4CAF00', 'rgb(138,226,51)', totalTime);   // MTN DEW green
+  drawPaddle(PADDLE_X, prY, paddleRH, '#CC0000', 'rgb(255,68,68)', totalTime);    // Code Red
+
+  // Power-ups
+  for (const pu of powerups) {
+    drawPowerup(pu, totalTime);
+  }
+
+  // Ball trail (intensifies with speed)
+  const speed = Math.sqrt(bvx * bvx + bvy * bvy);
+  const trailIntensity = Math.min(speed / 15, 1);
+  for (let i = 0; i < ballTrail.length; i++) {
+    const t = ballTrail[i];
+    const alpha = (1 - t.age / 0.35) * (i / ballTrail.length) * 0.35 * (0.3 + trailIntensity * 0.7);
+    if (alpha <= 0) continue;
+    const tp = worldToScreen(t.x, t.y);
+    ctx.beginPath();
+    ctx.arc(tp.x, tp.y, BALL_R * s * (i / ballTrail.length) * 0.65, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(99,255,224,${alpha})`;
+    ctx.fill();
+  }
+
+  // Speed lines
+  for (const sl of speedLines) {
+    const sp = worldToScreen(sl.x, sl.y);
+    const alpha = sl.life / sl.maxLife;
+    const endX = sl.x + Math.cos(sl.angle) * sl.length;
+    const endY = sl.y + Math.sin(sl.angle) * sl.length;
+    const ep = worldToScreen(endX, endY);
+    ctx.beginPath();
+    ctx.moveTo(sp.x, sp.y);
+    ctx.lineTo(ep.x, ep.y);
+    ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.5})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Shockwave rings
+  for (const sw of shockwaves) {
+    const swp = worldToScreen(sw.x, sw.y);
+    ctx.beginPath();
+    ctx.arc(swp.x, swp.y, sw.radius * s, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(99,255,224,${sw.alpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  // Hit flash
+  if (hitFlashAlpha > 0) {
+    const fp = worldToScreen(hitFlashX, hitFlashY);
+    const flashGrad = ctx.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, 100);
+    flashGrad.addColorStop(0, `rgba(99,255,224,${hitFlashAlpha})`);
+    flashGrad.addColorStop(0.5, `rgba(99,255,224,${hitFlashAlpha * 0.3})`);
+    flashGrad.addColorStop(1, 'rgba(99,255,224,0)');
+    ctx.fillStyle = flashGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Screen flash (for multiball / winner)
+  if (screenFlashAlpha > 0) {
+    ctx.fillStyle = `rgba(99,255,224,${screenFlashAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Beach ball (with squash/stretch - stretched along velocity)
+  const ballPos = worldToScreen(bx, by);
+  const ballSize = BALL_R * s;
+  const moveAngle = Math.atan2(-bvy, bvx); // negative bvy because screen Y is flipped
+  ctx.save();
+  ctx.translate(ballPos.x, ballPos.y);
+  ctx.rotate(moveAngle);
+  ctx.scale(ballSquashX, ballSquashY);
+  ctx.rotate(-moveAngle);
+  ctx.rotate(-bSpin * 0.15);
+  ctx.drawImage(ballImg, -ballSize, -ballSize, ballSize * 2, ballSize * 2);
+  ctx.restore();
+
+  // Extra balls
+  for (const eb of extraBalls) {
+    const ep = worldToScreen(eb.x, eb.y);
+    const ebSize = BALL_R * s * 0.8;
+    ctx.globalAlpha = Math.min(eb.life / 2, 0.7);
+    ctx.save();
+    ctx.translate(ep.x, ep.y);
+    ctx.rotate(eb.spin);
+    ctx.drawImage(extraBallImg, -ebSize, -ebSize, ebSize * 2, ebSize * 2);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  // Particles
+  for (const p of particles) {
+    const pp = worldToScreen(p.x, p.y);
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife) * 0.85;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(pp.x, pp.y, p.size * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Games Arcade</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 20px rgba(255,255,255,0.3);
+  }
+  .games {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    text-align: center;
+    text-decoration: none;
+    color: #fff;
+    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+    width: 240px;
+  }
+  .card:hover {
+    transform: translateY(-6px);
+    background: rgba(255,255,255,0.14);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+  .card .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .card h2 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+  .card p { font-size: 0.9rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+  <h1>Games Arcade</h1>
+  <div class="games">
+    <a href="baja-wave-rider.html" class="card">
+      <div class="icon">🏄</div>
+      <h2>Baja Wave Rider</h2>
+      <p>Ride the waves in Baja</p>
+    </a>
+    <a href="beach-pong.html" class="card">
+      <div class="icon">🏓</div>
+      <h2>Beach Pong</h2>
+      <p>Classic pong, beach style</p>
+    </a>
+    <a href="block-clear.html" class="card">
+      <div class="icon">🧱</div>
+      <h2>Block Clear</h2>
+      <p>Clear the blocks</p>
+    </a>
+  </div>
+</body>
+</html>
