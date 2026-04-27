@@ -191,7 +191,7 @@ const GOLD = '#FFD700';
 // --- Sprite Assets ---
 const SPRITES = {};
 const SPRITE_FILES = {
-  sun: 'sun.png', cloud: 'cloud.png',
+  sun: 'sun.png', moon: 'moon.png', cloud: 'cloud.png',
   beach: 'palm-0.png', 'beach-1': 'palm-1.png', 'beach-2': 'palm-2.png',
   'person-0': 'person-0.png', 'person-1': 'person-1.png', 'person-2': 'person-2.png',
   'person-3': 'person-3.png', 'person-4': 'person-4.png',
@@ -199,6 +199,8 @@ const SPRITE_FILES = {
   'umbrella-yellow': 'umbrella-yellow.png', 'umbrella-green': 'umbrella-green.png',
   'towel-orange': 'starfish.png', 'towel-purple': 'sand-castle.png', 'towel-teal': 'beach-ball.png',
   'surfer-stand': 'surfer-stand.png', 'surfer-jump': 'surfer-jump.png',
+  cooler: 'cooler.png',
+  'seagull-incoming': 'seagull-incoming.png',
   'obstacle-0': 'obstacle-0.png', 'obstacle-1': 'obstacle-1.png', 'obstacle-2': 'obstacle-2.png',
   'collectable-0': 'collectable-0.png', 'collectable-1': 'collectable-1.png',
   'air-obstacle-0': 'air-obstacle-0.png', 'air-obstacle-1': 'air-obstacle-1.png',
@@ -434,6 +436,15 @@ function drawStars() {
   });
 }
 
+function drawMoon() {
+  const sx = W * 0.75, sy = H * 0.18, sr = H * 0.1;
+  const img = SPRITES.moon;
+  if (!spriteReady(img)) return;
+  const scale = sr / 80;
+  const w = img.width * scale, h = img.height * scale;
+  ctx.drawImage(img, sx - w / 2, sy - h / 2, w, h);
+}
+
 function drawSun() {
   const sx = W * 0.75, sy = H * 0.18, sr = H * 0.1;
   const img = SPRITES.sun;
@@ -547,14 +558,16 @@ function initBeach() {
   for (let i = 0; i < 20; i++) {
     const bx = Math.random() * W * 3;
     const roll = Math.random();
-    if (roll < 0.45) {
+    if (roll < 0.4) {
       beachItems.push({ type: 'palm', x: bx, h: 120 + Math.random() * 80, lean: (Math.random() - 0.5) * 0.35, variant: pickPalmVariant() });
-    } else if (roll < 0.65) {
+    } else if (roll < 0.58) {
       beachItems.push({ type: 'person', x: bx, variant: 'person-' + Math.floor(Math.random() * 5) });
-    } else if (roll < 0.8) {
+    } else if (roll < 0.72) {
       beachItems.push({ type: 'umbrella', x: bx, variant: 'umbrella-' + ['red','blue','yellow','green'][Math.floor(Math.random()*4)] });
-    } else {
+    } else if (roll < 0.9) {
       beachItems.push({ type: 'towel', x: bx, variant: 'towel-' + ['orange','purple','teal'][Math.floor(Math.random()*3)] });
+    } else {
+      beachItems.push({ type: 'cooler', x: bx, variant: 'cooler' });
     }
   }
   // Guarantee a couple of palms in the initial visible window
@@ -626,30 +639,40 @@ function drawBeach(scrollSpeed, dt) {
 }
 
 // Anchor offsets (in px within each PNG) where the sprite's local (0,0) sits.
+// Defaults: standing/grounded sprites pin to bottom-center; floating sprites pin to center.
 const SPRITE_ANCHORS = {
-  beach:         { ax: 100, ay: 200, baseH: 180 },
-  'beach-1':     { ax: 100, ay: 200, baseH: 180 },
-  'beach-2':     { ax: 100, ay: 200, baseH: 180 },
-  'person-0':    { ax: 35,  ay: 45 },
-  'person-1':    { ax: 35,  ay: 45 },
-  'person-2':    { ax: 35,  ay: 45 },
-  'person-3':    { ax: 35,  ay: 45 },
-  'person-4':    { ax: 35,  ay: 45 },
-  'umbrella-red':    { ax: 70, ay: 135 },
-  'umbrella-blue':   { ax: 70, ay: 135 },
-  'umbrella-yellow': { ax: 70, ay: 135 },
-  'umbrella-green':  { ax: 70, ay: 135 },
-  'towel-orange': { ax: 30, ay: 4 },
-  'towel-purple': { ax: 30, ay: 4 },
-  'towel-teal':   { ax: 30, ay: 4 },
+  // palms (226x220, 168x220, 200x220) — bottom-center, baseH = full image height
+  beach:         { ax: 113, ay: 220, baseH: 220 },
+  'beach-1':     { ax: 84,  ay: 220, baseH: 220 },
+  'beach-2':     { ax: 100, ay: 220, baseH: 220 },
+  // people (90x60 for person-0, 90x90 for the rest) — bottom-center
+  'person-0':    { ax: 45, ay: 60 },
+  'person-1':    { ax: 45, ay: 90 },
+  'person-2':    { ax: 45, ay: 90 },
+  'person-3':    { ax: 45, ay: 90 },
+  'person-4':    { ax: 45, ay: 90 },
+  // umbrellas (140x140) — bottom-center
+  'umbrella-red':    { ax: 70, ay: 140 },
+  'umbrella-blue':   { ax: 70, ay: 140 },
+  'umbrella-yellow': { ax: 70, ay: 140 },
+  'umbrella-green':  { ax: 70, ay: 140 },
+  // towel slots now hold starfish (30x21), sand-castle (60x70), beach-ball (60x60)
+  'towel-orange': { ax: 15, ay: 21 },
+  'towel-purple': { ax: 30, ay: 70 },
+  'towel-teal':   { ax: 30, ay: 60 },
+  // surfer (120x110) — kept at the original pivot since physics references it
   'surfer-stand': { ax: 60, ay: 72 },
   'surfer-jump':  { ax: 60, ay: 72 },
-  'obstacle-0': { ax: 70, ay: 55 },
-  'obstacle-1': { ax: 40, ay: 40 },
-  'obstacle-2': { ax: 110, ay: 55 },
-  'collectable-0': { ax: 20, ay: 25 },
-  'collectable-1': { ax: 70, ay: 50 },
-  // seagull: anchor auto-computed per frame (varies between static/sheet files)
+  cooler:             { ax: 35, ay: 77 },   // 70x77
+  'seagull-incoming': { ax: 50, ay: 50 },   // 100x100 (centered)
+  // wave-surface obstacles — bottom-center
+  'obstacle-0': { ax: 85, ay: 140 },        // 170x140
+  'obstacle-1': { ax: 56, ay: 120 },        // 112x120
+  'obstacle-2': { ax: 83, ay: 220 },        // 167x220
+  // floating collectables — centered
+  'collectable-0': { ax: 50, ay: 40 },      // 100x80
+  'collectable-1': { ax: 50, ay: 30 },      // 100x59
+  // air obstacles: anchor auto-computed per frame (sheet, varies)
 };
 function getAnchor(key) {
   const a = SPRITE_ANCHORS[key];
@@ -870,58 +893,62 @@ function snapToDropSide(rawX) {
   return rawX + phaseDiff * WAVE_PERIOD;
 }
 
+// Keep at least this much horizontal space between any two obstacles/collectables.
+const ITEM_MIN_SPACING = 100;
+function tooCloseToOthers(x) {
+  for (const ob of obstacles) if (Math.abs(ob.worldX - x) < ITEM_MIN_SPACING) return true;
+  for (const c of collectibles) if (Math.abs(c.worldX - x) < ITEM_MIN_SPACING) return true;
+  return false;
+}
+
+// Dimensions match the sprite PNGs; hitbox = 70% of image, centered on image.
+// `sink` = fraction of image height that sits below the wave line (0 = floating, 1 = fully submerged).
+const OBSTACLE_TYPES = [
+  { kind: 'obstacle-0', w: 170, h: 140, weight: 0.40, sink: 0.45 },
+  { kind: 'obstacle-1', w: 112, h: 120, weight: 0.35, sink: 0.60 },
+  { kind: 'obstacle-2', w: 167, h: 220, weight: 0.25, sink: 0.45 },
+];
+const OBSTACLE_BY_KIND = Object.fromEntries(OBSTACLE_TYPES.map(t => [t.kind, t]));
+
 function createObstacle() {
   const rawX = W + 50 + Math.random() * 200;
   const worldX = snapToDropSide(rawX);
-  const type = Math.random();
-
-  if (type < 0.4) {
-    obstacles.push({
-      kind: 'crab', worldX,
-      heightAboveWave: 0,
-      hitW: 72, hitH: 54
-    });
-  } else if (type < 0.75) {
-    obstacles.push({
-      kind: 'jellyfish', worldX,
-      heightAboveWave: 0,
-      hitW: 50, hitH: 50
-    });
-  } else {
-    obstacles.push({
-      kind: 'shark', worldX,
-      heightAboveWave: 0,
-      hitW: 140, hitH: 60
-    });
-  }
+  if (tooCloseToOthers(worldX)) return;
+  const r = Math.random();
+  let acc = 0, def = OBSTACLE_TYPES[OBSTACLE_TYPES.length - 1];
+  for (const t of OBSTACLE_TYPES) { acc += t.weight; if (r < acc) { def = t; break; } }
+  obstacles.push({
+    kind: def.kind, worldX,
+    heightAboveWave: 0,
+    imgW: def.w, imgH: def.h,
+    hitW: def.w * 0.85, hitH: def.h * 0.85,
+    bobPhase: Math.random() * Math.PI * 2
+  });
 }
 
-function drawCrab(x, y) {
-  drawSpriteVariant('obstacle-0', x, y);
-}
-
-function drawJellyfish(x, y) {
-  const img = SPRITES['obstacle-1'];
-  const a = SPRITE_ANCHORS['obstacle-1'];
-  if (!spriteReady(img)) return;
-  const bob = Math.sin(time * 2.5 + x * 0.01) * 4;
-  ctx.drawImage(img, x - a.ax, y + bob - a.ay);
-}
 
 // ============================================================
 // COLLECTIBLES - Mountain Dew cans above wave
 // ============================================================
 
+// dewcan = collectable-0 (100x80), starfish = collectable-1 (100x59)
+const COLLECTABLE_DIMS = { dewcan: { w: 100, h: 80 }, starfish: { w: 100, h: 59 } };
+
 function createCollectible() {
+  const worldX = W + 100 + Math.random() * 300;
+  if (tooCloseToOthers(worldX)) return;
   const isStarfish = Math.random() < 0.28;
+  const kind = isStarfish ? 'starfish' : 'dewcan';
+  const d = COLLECTABLE_DIMS[kind];
   collectibles.push({
-    kind: isStarfish ? 'starfish' : 'dewcan',
+    kind,
     value: isStarfish ? 100 : 50,
-    worldX: W + 100 + Math.random() * 300,
+    worldX,
     heightAboveWave: H * 0.1 + Math.random() * H * 0.5,
     collected: false, collectAnim: 0,
     rot: 0,
-    pulsePhase: Math.random() * Math.PI * 2
+    pulsePhase: Math.random() * Math.PI * 2,
+    hitW: d.w, hitH: d.h
   });
 }
 
@@ -962,12 +989,12 @@ function drawDewCan(x, y, scale, pulse) {
 
 let seagulls = [];
 let seagullTimer = 0;
-let seagullWarnings = []; // pending spawns shown as flashing icon at the right edge
+let seagullWarnings = []; // pending spawns shown as flashing seagull-incoming icon at right edge
 const AIR_OBSTACLE_VARIANTS = ['air-obstacle-0', 'air-obstacle-1'];
 
 // Two fixed flight altitudes — air obstacles always spawn on one of these lanes.
 const AIR_OBSTACLE_LANES = [0.4, 0.62];
-const SEAGULL_WARN_TIME = 1.6; // seconds of flashing before the bird arrives
+const SEAGULL_WARN_TIME = 1.6;
 
 function queueSeagull() {
   seagullWarnings.push({
@@ -977,13 +1004,15 @@ function queueSeagull() {
   });
 }
 
+// Air-obstacle sprite sheets are 100x100 per frame; hitbox = 70% of frame, centered.
+const AIR_OBSTACLE_FRAME = 100;
 function createSeagull(lane, variant) {
   seagulls.push({
     worldX: W + 50 + Math.random() * 150,
     y: H * lane,
     wingPhase: Math.random() * Math.PI * 2,
     speed: 0.3 + Math.random() * 0.4,
-    hitW: 50, hitH: 30,
+    hitW: AIR_OBSTACLE_FRAME * 0.7, hitH: AIR_OBSTACLE_FRAME * 0.7,
     variant
   });
 }
@@ -1322,12 +1351,15 @@ function update(now) {
 
     const ox = ob.worldX;
     const waveAtOb = getWaveY(ox);
-    // Both crabs and jellyfish sit on the wave surface
-    const oy = waveAtOb - 12;
+    // Sprite is bottom-anchored at oy and sunk into the wave by `sink * imgH`,
+    // plus a small vertical bob so it looks like it's riding swells.
+    const sink = (OBSTACLE_BY_KIND[ob.kind] || { sink: 0 }).sink;
+    const bob = Math.sin(time * 2.4 + ob.bobPhase) * 8;
+    const oy = waveAtOb + ob.imgH * sink + bob;
+    const centerY = oy - ob.imgH / 2;
 
-    // Collision check
     const dx = Math.abs(ox - surferX);
-    const dy = Math.abs(oy - surferY);
+    const dy = Math.abs(centerY - surferY);
     const hw = ob.hitW / 2;
     const hh = ob.hitH / 2;
 
@@ -1359,7 +1391,7 @@ function update(now) {
   }
   nearMissTimer -= dt;
 
-  // --- Spawn air obstacles (max 2 on screen, warn first) ---
+  // --- Spawn air obstacles (max 2 on screen) ---
   seagullTimer -= dt;
   if (seagullTimer <= 0) {
     if (seagulls.length + seagullWarnings.length < 2 && Math.random() < 0.8) queueSeagull();
@@ -1429,7 +1461,7 @@ function update(now) {
     const cy = getWaveY(cx) - col.heightAboveWave;
     const ddx = Math.abs(cx - surferX);
     const ddy = Math.abs(cy - surferY);
-    if (ddx < 28 && ddy < 28) {
+    if (ddx < col.hitW / 2 && ddy < col.hitH / 2) {
       col.collected = true;
       col.collectAnim = 0;
       bonusScore += col.value;
@@ -1493,7 +1525,8 @@ function render() {
   // Background
   drawSky();
   drawStars();
-  drawSun();
+  if (timeOfDay === 'twilight' || timeOfDay === 'night') drawMoon();
+  else drawSun();
   drawClouds();
   drawBeach(gameState === 'playing' ? 300 * speed : 30, lastDt);
 
@@ -1506,17 +1539,14 @@ function render() {
   // Surfer trail
   drawSurferTrail();
 
-  // Obstacles (on wave surface)
+  // Obstacles (drawn on top of wave so they're always visible)
   obstacles.forEach(ob => {
     const ox = ob.worldX;
     const waveAtOb = getWaveY(ox);
-    if (ob.kind === 'crab') {
-      drawCrab(ox, waveAtOb - 12);
-    } else if (ob.kind === 'shark') {
-      drawSpriteVariant('obstacle-2', ox, waveAtOb - 12);
-    } else {
-      drawJellyfish(ox, waveAtOb - 12);
-    }
+    const sink = (OBSTACLE_BY_KIND[ob.kind] || { sink: 0 }).sink;
+    const oy = waveAtOb + ob.imgH * sink;
+    const bob = Math.sin(time * 2.4 + ob.bobPhase) * 8;
+    drawSpriteVariant(ob.kind, ox, oy + bob);
   });
 
   // Seagulls (sky obstacles)
@@ -1524,13 +1554,13 @@ function render() {
     drawSeagull(sg.worldX, sg.y, sg.wingPhase, sg.variant);
   });
 
-  // Incoming-bird warnings: flashing icon at the right edge on the bird's lane
+  // Incoming-bird warnings: flashing seagull-incoming icon at the right edge
   seagullWarnings.forEach(w => {
-    const flash = (Math.sin(time * 14) + 1) / 2; // 0..1, ~2.2 Hz
+    const flash = (Math.sin(time * 14) + 1) / 2;
     if (flash < 0.3) return;
     ctx.save();
     ctx.globalAlpha = 0.55 + 0.45 * flash;
-    drawSpriteVariant(w.variant, W - 28, H * w.lane, time * 8);
+    drawSpriteVariant('seagull-incoming', W - 60, H * w.lane);
     ctx.restore();
   });
 
