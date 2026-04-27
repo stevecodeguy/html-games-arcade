@@ -148,6 +148,7 @@
 
 <canvas id="gameCanvas"></canvas>
 
+<script src="data/palette.js"></script>
 <script>
 // ============================================================
 // BAJA WAVE RIDER - Crest-Jump Physics Edition
@@ -171,59 +172,10 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// --- Palette (sand + sky-by-time-of-day) ---
-// Inline default; data/palette.json overrides on load if reachable.
-let PALETTE = {
-  sand: {
-    back: [
-      { stop: 0,    color: '#E8D5A3' },
-      { stop: 0.25, color: '#F0D9A0' },
-      { stop: 0.5,  color: '#DEB887' },
-      { stop: 0.75, color: '#C8AD75' },
-      { stop: 0.9,  color: '#A08855' },
-      { stop: 1,    color: '#8B7744' }
-    ],
-    front: [
-      { stop: 0,   color: '#D4B88C' },
-      { stop: 0.5, color: '#C4A265' },
-      { stop: 1,   color: '#8B7744' }
-    ]
-  },
-  sky: {
-    morning: [
-      { stop: 0, color: '#87BEDC' }, { stop: 0.3, color: '#B5DCEE' },
-      { stop: 0.55, color: '#FFE0B0' }, { stop: 0.75, color: '#FFCC99' },
-      { stop: 0.9, color: '#FFE8B0' }, { stop: 1, color: '#FFF4D0' }
-    ],
-    noon: [
-      { stop: 0, color: '#3F7BBE' }, { stop: 0.3, color: '#6FA8DC' },
-      { stop: 0.6, color: '#9FC5E8' }, { stop: 0.85, color: '#BDD6E8' },
-      { stop: 1, color: '#D4E4EC' }
-    ],
-    afternoon: [
-      { stop: 0, color: '#2C4A75' }, { stop: 0.3, color: '#4A7AAE' },
-      { stop: 0.55, color: '#87A8C8' }, { stop: 0.75, color: '#E8B580' },
-      { stop: 0.9, color: '#F4A55C' }, { stop: 1, color: '#FFC880' }
-    ],
-    twilight: [
-      { stop: 0, color: '#1a0a3e' }, { stop: 0.2, color: '#2e1065' },
-      { stop: 0.4, color: '#6b2fa0' }, { stop: 0.6, color: '#d4547a' },
-      { stop: 0.8, color: '#ff8c42' }, { stop: 1, color: '#ffcc33' }
-    ],
-    night: [
-      { stop: 0, color: '#060815' }, { stop: 0.3, color: '#0F1535' },
-      { stop: 0.6, color: '#1D2152' }, { stop: 0.85, color: '#2E2858' },
-      { stop: 1, color: '#4C3A6C' }
-    ]
-  }
-};
+// --- Palette: defined in data/palette.js, loaded via <script> tag above ---
+let PALETTE = window.PALETTE;
 const TIMES_OF_DAY = ['morning', 'noon', 'afternoon', 'twilight', 'night'];
 let timeOfDay = 'twilight';
-
-fetch('data/palette.json')
-  .then(r => r.ok ? r.json() : null)
-  .then(data => { if (data) PALETTE = data; })
-  .catch(() => { /* keep inline fallback (e.g. file:// without server) */ });
 
 function applyStops(grad, stops) {
   stops.forEach(s => grad.addColorStop(s.stop, s.color));
@@ -240,15 +192,16 @@ const GOLD = '#FFD700';
 const SPRITES = {};
 const SPRITE_FILES = {
   sun: 'sun.png', cloud: 'cloud.png',
-  palm: 'palm.png', 'palm-1': 'palm-1.png', 'palm-2': 'palm-2.png',
+  beach: 'palm-0.png', 'beach-1': 'palm-1.png', 'beach-2': 'palm-2.png',
   'person-0': 'person-0.png', 'person-1': 'person-1.png', 'person-2': 'person-2.png',
   'person-3': 'person-3.png', 'person-4': 'person-4.png',
   'umbrella-red': 'umbrella-red.png', 'umbrella-blue': 'umbrella-blue.png',
   'umbrella-yellow': 'umbrella-yellow.png', 'umbrella-green': 'umbrella-green.png',
-  'towel-orange': 'towel-orange.png', 'towel-purple': 'towel-purple.png', 'towel-teal': 'towel-teal.png',
+  'towel-orange': 'starfish.png', 'towel-purple': 'sand-castle.png', 'towel-teal': 'beach-ball.png',
   'surfer-stand': 'surfer-stand.png', 'surfer-jump': 'surfer-jump.png',
-  crab: 'crab.png', jellyfish: 'jellyfish.png', shark: 'shark.png',
-  dewcan: 'dewcan.png', starfish: 'starfish.png', seagull: 'seagull.png',
+  'obstacle-0': 'obstacle-0.png', 'obstacle-1': 'obstacle-1.png', 'obstacle-2': 'obstacle-2.png',
+  'collectable-0': 'collectable-0.png', 'collectable-1': 'collectable-1.png',
+  'air-obstacle-0': 'air-obstacle-0.png', 'air-obstacle-1': 'air-obstacle-1.png',
   wave: 'wave.png',
 };
 const SPRITE_META = {};
@@ -585,7 +538,7 @@ function drawClouds() {
 // ============================================================
 
 const beachItems = [];
-const PALM_VARIANTS = ['palm', 'palm-1', 'palm-2'];
+const PALM_VARIANTS = ['beach', 'beach-1', 'beach-2'];
 function pickPalmVariant() {
   return PALM_VARIANTS[Math.floor(Math.random() * PALM_VARIANTS.length)];
 }
@@ -674,9 +627,9 @@ function drawBeach(scrollSpeed, dt) {
 
 // Anchor offsets (in px within each PNG) where the sprite's local (0,0) sits.
 const SPRITE_ANCHORS = {
-  palm:          { ax: 100, ay: 200, baseH: 180 },
-  'palm-1':      { ax: 100, ay: 200, baseH: 180 },
-  'palm-2':      { ax: 100, ay: 200, baseH: 180 },
+  beach:         { ax: 100, ay: 200, baseH: 180 },
+  'beach-1':     { ax: 100, ay: 200, baseH: 180 },
+  'beach-2':     { ax: 100, ay: 200, baseH: 180 },
   'person-0':    { ax: 35,  ay: 45 },
   'person-1':    { ax: 35,  ay: 45 },
   'person-2':    { ax: 35,  ay: 45 },
@@ -691,11 +644,11 @@ const SPRITE_ANCHORS = {
   'towel-teal':   { ax: 30, ay: 4 },
   'surfer-stand': { ax: 60, ay: 72 },
   'surfer-jump':  { ax: 60, ay: 72 },
-  crab:      { ax: 70, ay: 55 },
-  jellyfish: { ax: 40, ay: 40 },
-  shark:     { ax: 110, ay: 55 },
-  dewcan:    { ax: 20, ay: 25 },
-  starfish:  { ax: 70, ay: 50 },
+  'obstacle-0': { ax: 70, ay: 55 },
+  'obstacle-1': { ax: 40, ay: 40 },
+  'obstacle-2': { ax: 110, ay: 55 },
+  'collectable-0': { ax: 20, ay: 25 },
+  'collectable-1': { ax: 70, ay: 50 },
   // seagull: anchor auto-computed per frame (varies between static/sheet files)
 };
 function getAnchor(key) {
@@ -724,7 +677,7 @@ function drawSpriteVariant(key, x, y, phase) {
 }
 
 function drawPalmTree(variant, x, y, h, lean) {
-  const key = variant || 'palm-1';
+  const key = variant || 'beach-1';
   const img = SPRITES[key];
   const a = SPRITE_ANCHORS[key];
   if (!spriteReady(img) || !a) return;
@@ -944,12 +897,12 @@ function createObstacle() {
 }
 
 function drawCrab(x, y) {
-  drawSpriteVariant('crab', x, y);
+  drawSpriteVariant('obstacle-0', x, y);
 }
 
 function drawJellyfish(x, y) {
-  const img = SPRITES.jellyfish;
-  const a = SPRITE_ANCHORS.jellyfish;
+  const img = SPRITES['obstacle-1'];
+  const a = SPRITE_ANCHORS['obstacle-1'];
   if (!spriteReady(img)) return;
   const bob = Math.sin(time * 2.5 + x * 0.01) * 4;
   ctx.drawImage(img, x - a.ax, y + bob - a.ay);
@@ -973,8 +926,8 @@ function createCollectible() {
 }
 
 function drawStarfish(x, y, scale, pulse) {
-  const img = SPRITES.starfish;
-  const a = SPRITE_ANCHORS.starfish;
+  const img = SPRITES['collectable-1'];
+  const a = SPRITE_ANCHORS['collectable-1'];
   if (!spriteReady(img) || !a) return;
   const s = scale || 1;
   const bob = Math.sin(pulse) * 3;
@@ -991,8 +944,8 @@ function drawCollectible(col, x, y, scale) {
 }
 
 function drawDewCan(x, y, scale, pulse) {
-  const img = SPRITES.dewcan;
-  const a = SPRITE_ANCHORS.dewcan;
+  const img = SPRITES['collectable-0'];
+  const a = SPRITE_ANCHORS['collectable-0'];
   if (!spriteReady(img)) return;
   const s = scale || 1;
   const bob = Math.sin(pulse) * 3;
@@ -1009,23 +962,24 @@ function drawDewCan(x, y, scale, pulse) {
 
 let seagulls = [];
 let seagullTimer = 0;
+const AIR_OBSTACLE_VARIANTS = ['air-obstacle-0', 'air-obstacle-1'];
 
+// Two fixed flight altitudes — air obstacles always spawn on one of these lanes.
+const AIR_OBSTACLE_LANES = [0.4, 0.62];
 function createSeagull() {
-  // Fly in the sky zone: above the wave peak area, below the stars
-  // Stars are at y: 0 to 0.7*H, wave crests reach about WAVE_BASELINE - WAVE_AMP*H
-  // Seagulls fly in the mid-sky: 35% to 70% of screen height
-  const skyY = H * 0.35 + Math.random() * H * 0.35;
+  const lane = AIR_OBSTACLE_LANES[Math.floor(Math.random() * AIR_OBSTACLE_LANES.length)];
   seagulls.push({
     worldX: W + 50 + Math.random() * 150,
-    y: skyY,
+    y: H * lane,
     wingPhase: Math.random() * Math.PI * 2,
-    speed: 0.3 + Math.random() * 0.4, // extra speed multiplier on top of scroll
-    hitW: 50, hitH: 30
+    speed: 0.3 + Math.random() * 0.4,
+    hitW: 50, hitH: 30,
+    variant: AIR_OBSTACLE_VARIANTS[Math.floor(Math.random() * AIR_OBSTACLE_VARIANTS.length)]
   });
 }
 
-function drawSeagull(x, y, wingPhase) {
-  drawSpriteVariant('seagull', x, y, wingPhase);
+function drawSeagull(x, y, wingPhase, variant) {
+  drawSpriteVariant(variant || 'air-obstacle-0', x, y, wingPhase);
 }
 
 // ============================================================
@@ -1395,11 +1349,11 @@ function update(now) {
   }
   nearMissTimer -= dt;
 
-  // --- Spawn seagulls ---
+  // --- Spawn air obstacles (max 2 on screen) ---
   seagullTimer -= dt;
   if (seagullTimer <= 0) {
-    createSeagull();
-    seagullTimer = 2 + Math.random() * 3;
+    if (seagulls.length < 2 && Math.random() < 0.8) createSeagull();
+    seagullTimer = 1.2 + Math.random() * 2.3;
   }
 
   // --- Update seagulls ---
@@ -1541,7 +1495,7 @@ function render() {
     if (ob.kind === 'crab') {
       drawCrab(ox, waveAtOb - 12);
     } else if (ob.kind === 'shark') {
-      drawSpriteVariant('shark', ox, waveAtOb - 12);
+      drawSpriteVariant('obstacle-2', ox, waveAtOb - 12);
     } else {
       drawJellyfish(ox, waveAtOb - 12);
     }
@@ -1549,7 +1503,7 @@ function render() {
 
   // Seagulls (sky obstacles)
   seagulls.forEach(sg => {
-    drawSeagull(sg.worldX, sg.y, sg.wingPhase);
+    drawSeagull(sg.worldX, sg.y, sg.wingPhase, sg.variant);
   });
 
   // Collectibles above wave (dewcans + starfish)
