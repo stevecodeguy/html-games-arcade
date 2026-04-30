@@ -150,14 +150,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL;
+// The game's draw and physics code uses LOGICAL pixels with a fixed height
+// (REF_H). Each frame the canvas is scaled by `uiScale` so logical units map
+// to physical pixels. This keeps sprites and physics looking the same in
+// portrait or landscape — only the logical width changes with aspect ratio.
+const REF_H = 800;
+let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL, uiScale = 1;
 function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  uiScale = canvas.height / REF_H;
+  H = REF_H;
+  W = canvas.width / uiScale;
   WAVE_BASELINE = H * 0.93;
-  // Physics scaled so jump reaches 75% of screen height
   const jumpHeight = H * 0.75;
-  const JUMP_TIME = 1.4; // total seconds in air
+  const JUMP_TIME = 1.4;
   GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
   JUMP_VEL = GRAVITY * JUMP_TIME / 2;
 }
@@ -933,11 +940,6 @@ function obstacleWaveIndex(worldX) {
   return Math.floor((worldX + waveOffset) / WAVE_PERIOD);
 }
 
-// Reference viewport height the sprites were sized for. Obstacles scale with H
-// so they read at the same on-screen size in any orientation.
-const REF_H = 900;
-function uiScale() { return H / REF_H; }
-
 function createObstacle() {
   const rawX = W + 50 + Math.random() * 200;
   const worldX = snapToDropSide(rawX);
@@ -947,13 +949,11 @@ function createObstacle() {
   const r = Math.random();
   let acc = 0, def = OBSTACLE_TYPES[OBSTACLE_TYPES.length - 1];
   for (const t of OBSTACLE_TYPES) { acc += t.weight; if (r < acc) { def = t; break; } }
-  const s = uiScale();
   obstacles.push({
     kind: def.kind, worldX,
     heightAboveWave: 0,
-    drawScale: s,
-    imgW: def.w * s, imgH: def.h * s,
-    hitW: def.w * s * 0.85, hitH: def.h * s * 0.85,
+    imgW: def.w, imgH: def.h,
+    hitW: def.w * 0.85, hitH: def.h * 0.85,
     bobPhase: Math.random() * Math.PI * 2
   });
   lastObstacleWaveIndex = waveIndex;
@@ -1574,6 +1574,7 @@ function update(now) {
 function render() {
   const shake = getShakeOffset();
 
+  ctx.setTransform(uiScale, 0, 0, uiScale, 0, 0); // logical → physical pixels
   ctx.save();
   ctx.translate(shake.x, shake.y);
   ctx.clearRect(-10, -10, W + 20, H + 20);
@@ -1602,11 +1603,7 @@ function render() {
     const sink = (OBSTACLE_BY_KIND[ob.kind] || { sink: 0 }).sink;
     const oy = waveAtOb + ob.imgH * sink;
     const bob = Math.sin(time * 2.4 + ob.bobPhase) * 8;
-    ctx.save();
-    ctx.translate(ox, oy + bob);
-    ctx.scale(ob.drawScale, ob.drawScale);
-    drawSpriteVariant(ob.kind, 0, 0);
-    ctx.restore();
+    drawSpriteVariant(ob.kind, ox, oy + bob);
   });
 
   // Seagulls (sky obstacles)
