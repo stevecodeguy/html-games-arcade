@@ -156,6 +156,7 @@ const ctx = canvas.getContext('2d');
 // portrait or landscape — only the logical width changes with aspect ratio.
 const REF_H = 800;
 let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL, uiScale = 1;
+let _prevSurferX = null;
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -167,6 +168,19 @@ function resize() {
   const JUMP_TIME = 1.4;
   GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
   JUMP_VEL = GRAVITY * JUMP_TIME / 2;
+  // Surfer is pinned to W * 0.22 every frame, so a viewport change would
+  // teleport the surfer past any obstacles ahead. Shift all world objects
+  // by the same delta to keep their position relative to the surfer.
+  const newSurferX = W * 0.22;
+  if (_prevSurferX !== null) {
+    const dx = newSurferX - _prevSurferX;
+    if (dx !== 0) {
+      if (typeof obstacles !== 'undefined') obstacles.forEach(ob => ob.worldX += dx);
+      if (typeof collectibles !== 'undefined') collectibles.forEach(c => c.worldX += dx);
+      if (typeof seagulls !== 'undefined') seagulls.forEach(sg => sg.worldX += dx);
+    }
+  }
+  _prevSurferX = newSurferX;
 }
 resize();
 window.addEventListener('resize', resize);
