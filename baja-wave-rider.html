@@ -155,8 +155,10 @@ const ctx = canvas.getContext('2d');
 // to physical pixels. This keeps sprites and physics looking the same in
 // portrait or landscape — only the logical width changes with aspect ratio.
 const REF_H = 800;
+// Surfer's screen X is a constant in logical pixels (independent of W) so
+// rotation doesn't reposition the surfer or trigger any compensating shifts.
+const SURFER_X = 110;
 let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL, uiScale = 1;
-let _prevSurferX = null;
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -168,18 +170,6 @@ function resize() {
   const JUMP_TIME = 1.4;
   GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
   JUMP_VEL = GRAVITY * JUMP_TIME / 2;
-  // Surfer is pinned to W * 0.22 every frame. When W changes (rotation), shift
-  // waveOffset so the surfer's absolute world position stays the same — that
-  // way pre-generated obstacles (positioned in absolute coords) still line up
-  // correctly with the surfer.
-  const newSurferX = W * 0.22;
-  if (_prevSurferX !== null) {
-    const dx = newSurferX - _prevSurferX;
-    if (dx !== 0 && typeof waveOffset !== 'undefined') waveOffset -= dx;
-    // Seagulls are still in screen-relative worldX; nudge them so they don't jump.
-    if (typeof seagulls !== 'undefined') seagulls.forEach(sg => sg.worldX += dx);
-  }
-  _prevSurferX = newSurferX;
 }
 resize();
 window.addEventListener('resize', resize);
@@ -1374,7 +1364,7 @@ function update(now) {
   distance += scrollSpeed * dt * 0.1;
   distantWaveOffset += scrollSpeed * 0.3 * dt;
 
-  surferX = W * 0.22;
+  surferX = SURFER_X;
 
   // Update clouds
   clouds.forEach(c => {
