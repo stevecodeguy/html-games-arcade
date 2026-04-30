@@ -168,17 +168,16 @@ function resize() {
   const JUMP_TIME = 1.4;
   GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
   JUMP_VEL = GRAVITY * JUMP_TIME / 2;
-  // Surfer is pinned to W * 0.22 every frame, so a viewport change would
-  // teleport the surfer past any obstacles ahead. Shift all world objects
-  // by the same delta to keep their position relative to the surfer.
+  // Surfer is pinned to W * 0.22 every frame. When W changes (rotation), shift
+  // waveOffset so the surfer's absolute world position stays the same — that
+  // way pre-generated obstacles (positioned in absolute coords) still line up
+  // correctly with the surfer.
   const newSurferX = W * 0.22;
   if (_prevSurferX !== null) {
     const dx = newSurferX - _prevSurferX;
-    if (dx !== 0) {
-      if (typeof obstacles !== 'undefined') obstacles.forEach(ob => ob.worldX += dx);
-      if (typeof collectibles !== 'undefined') collectibles.forEach(c => c.worldX += dx);
-      if (typeof seagulls !== 'undefined') seagulls.forEach(sg => sg.worldX += dx);
-    }
+    if (dx !== 0 && typeof waveOffset !== 'undefined') waveOffset -= dx;
+    // Seagulls are still in screen-relative worldX; nudge them so they don't jump.
+    if (typeof seagulls !== 'undefined') seagulls.forEach(sg => sg.worldX += dx);
   }
   _prevSurferX = newSurferX;
 }
@@ -914,27 +913,22 @@ function drawSurferTrail() {
 // OBSTACLES - All positioned above wave line
 // ============================================================
 
-// Snap a world X to the lower half of the drop side (right side) of a wave
-function snapToDropSide(rawX) {
-  const wx = rawX + waveOffset;
-  const phase = (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
-  // Lower half of drop: midpoint of drop to end of drop
+// Snap an absolute world X to the lower half of the drop side of a wave.
+function snapAbsToDropSide(absX) {
+  const phase = (((absX % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
   const dropMid = RAMP_FRAC + DROP_FRAC * 0.5;
   const dropEnd = RAMP_FRAC + DROP_FRAC;
-  if (phase >= dropMid && phase < dropEnd) {
-    return rawX; // already in lower half of drop
-  }
-  // Shift forward to land in the lower half of the drop
+  if (phase >= dropMid && phase < dropEnd) return absX;
   const targetPhase = dropMid + Math.random() * (DROP_FRAC * 0.45);
   const phaseDiff = ((targetPhase - phase) % 1 + 1) % 1;
-  return rawX + phaseDiff * WAVE_PERIOD;
+  return absX + phaseDiff * WAVE_PERIOD;
 }
 
 // Keep at least this much horizontal space between any two obstacles/collectables.
 const ITEM_MIN_SPACING = 100;
-function tooCloseToOthers(x) {
-  for (const ob of obstacles) if (Math.abs(ob.worldX - x) < ITEM_MIN_SPACING) return true;
-  for (const c of collectibles) if (Math.abs(c.worldX - x) < ITEM_MIN_SPACING) return true;
+function tooCloseToOthersAbs(absX) {
+  for (const ob of obstacles) if (Math.abs(ob.absX - absX) < ITEM_MIN_SPACING) return true;
+  for (const c of collectibles) if (Math.abs(c.absX - absX) < ITEM_MIN_SPACING) return true;
   return false;
 }
 
@@ -950,27 +944,43 @@ const OBSTACLE_BY_KIND = Object.fromEntries(OBSTACLE_TYPES.map(t => [t.kind, t])
 // Index of the wave that received the most recent obstacle. We refuse to
 // spawn on the wave directly after it, so obstacle waves are never adjacent.
 let lastObstacleWaveIndex = -Infinity;
-function obstacleWaveIndex(worldX) {
-  return Math.floor((worldX + waveOffset) / WAVE_PERIOD);
-}
+// Cursor that always points to the next absolute X we'll consider for an
+// obstacle spawn. We pre-generate up to GENERATION_AHEAD beyond waveOffset so
+// rotation never causes obstacles to pop in or out.
+const GENERATION_AHEAD = 2500;
+let obstacleSpawnCursor = 0;
+let collectibleSpawnCursor = 0;
 
-function createObstacle() {
-  const rawX = W + 50 + Math.random() * 200;
-  const worldX = snapToDropSide(rawX);
-  const waveIndex = obstacleWaveIndex(worldX);
-  if (waveIndex === lastObstacleWaveIndex + 1) return; // skip waves adjacent to the last spawn
-  if (tooCloseToOthers(worldX)) return;
+function tryCreateObstacleAt(rawAbsX) {
+  const absX = snapAbsToDropSide(rawAbsX);
+  const waveIndex = Math.floor(absX / WAVE_PERIOD);
+  if (waveIndex === lastObstacleWaveIndex + 1) return false;
+  if (tooCloseToOthersAbs(absX)) return false;
   const r = Math.random();
   let acc = 0, def = OBSTACLE_TYPES[OBSTACLE_TYPES.length - 1];
   for (const t of OBSTACLE_TYPES) { acc += t.weight; if (r < acc) { def = t; break; } }
   obstacles.push({
-    kind: def.kind, worldX,
+    kind: def.kind,
+    absX,
+    worldX: absX - waveOffset, // derived; refreshed each frame
     heightAboveWave: 0,
     imgW: def.w, imgH: def.h,
     hitW: def.w * 0.85, hitH: def.h * 0.85,
     bobPhase: Math.random() * Math.PI * 2
   });
   lastObstacleWaveIndex = waveIndex;
+  return true;
+}
+
+// Step the spawn cursor forward and try to drop obstacles until we've
+// pre-populated GENERATION_AHEAD beyond the current scroll position.
+function generateObstaclesAhead() {
+  const target = waveOffset + GENERATION_AHEAD;
+  let safety = 100;
+  while (obstacleSpawnCursor < target && safety-- > 0) {
+    obstacleSpawnCursor += 180 + Math.random() * 220; // average gap ≈ 290
+    tryCreateObstacleAt(obstacleSpawnCursor);
+  }
 }
 
 
@@ -981,22 +991,32 @@ function createObstacle() {
 // dewcan = collectable-0 (100x80), starfish = collectable-1 (100x59)
 const COLLECTABLE_DIMS = { dewcan: { w: 100, h: 80 }, starfish: { w: 100, h: 59 } };
 
-function createCollectible() {
-  const worldX = W + 100 + Math.random() * 300;
-  if (tooCloseToOthers(worldX)) return;
+function tryCreateCollectibleAt(absX) {
+  if (tooCloseToOthersAbs(absX)) return false;
   const isStarfish = Math.random() < 0.28;
   const kind = isStarfish ? 'starfish' : 'dewcan';
   const d = COLLECTABLE_DIMS[kind];
   collectibles.push({
     kind,
     value: isStarfish ? 100 : 50,
-    worldX,
+    absX,
+    worldX: absX - waveOffset,
     heightAboveWave: H * 0.1 + Math.random() * H * 0.5,
     collected: false, collectAnim: 0,
     rot: 0,
     pulsePhase: Math.random() * Math.PI * 2,
     hitW: d.w, hitH: d.h
   });
+  return true;
+}
+
+function generateCollectiblesAhead() {
+  const target = waveOffset + GENERATION_AHEAD;
+  let safety = 100;
+  while (collectibleSpawnCursor < target && safety-- > 0) {
+    collectibleSpawnCursor += 220 + Math.random() * 320; // average gap ≈ 380
+    tryCreateCollectibleAt(collectibleSpawnCursor);
+  }
 }
 
 function drawStarfish(x, y, scale, pulse) {
@@ -1280,6 +1300,10 @@ function resetGame() {
   jumpKeyHeld = false;
   obstacleTimer = 0; collectibleTimer = 0; lastMilestone = 0;
   lastObstacleWaveIndex = -Infinity;
+  // Pre-gen cursors start a screen-width ahead of the surfer so the first
+  // obstacles spawn off-screen right and scroll in.
+  obstacleSpawnCursor = waveOffset + W;
+  collectibleSpawnCursor = waveOffset + W;
   obstacles = []; collectibles = []; particles = [];
   seagulls = []; seagullTimer = 0; seagullWarnings = [];
   speedLines = []; surferTrail = []; popups = [];
@@ -1401,24 +1425,15 @@ function update(now) {
   // Speed lines
   updateSpeedLines(dt);
 
-  // --- Spawn obstacles ---
-  obstacleTimer -= dt;
-  if (obstacleTimer <= 0) {
-    createObstacle();
-    obstacleTimer = Math.max(0.6, 1.8 / speed);
-  }
-
-  // --- Spawn collectibles ---
-  collectibleTimer -= dt;
-  if (collectibleTimer <= 0) {
-    createCollectible();
-    collectibleTimer = 1 + Math.random() * 1.5;
-  }
+  // Pre-generate obstacles + collectibles up to GENERATION_AHEAD ahead so
+  // rotation never causes anything to pop in or out.
+  generateObstaclesAhead();
+  generateCollectiblesAhead();
 
   // --- Update obstacles ---
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const ob = obstacles[i];
-    ob.worldX -= scrollSpeed * dt;
+    ob.worldX = ob.absX - waveOffset;
     if (ob.worldX < -100) { obstacles.splice(i, 1); continue; }
 
     const ox = ob.worldX;
@@ -1518,7 +1533,7 @@ function update(now) {
   // --- Update collectibles ---
   for (let i = collectibles.length - 1; i >= 0; i--) {
     const col = collectibles[i];
-    col.worldX -= scrollSpeed * dt;
+    col.worldX = col.absX - waveOffset;
     col.rot += dt * 2;
     col.pulsePhase += dt * 4;
     if (col.worldX < -80) { collectibles.splice(i, 1); continue; }
