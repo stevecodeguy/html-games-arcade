@@ -1790,9 +1790,9 @@ function render() {
   drawSky();
   drawDewMountain();
   drawStars();
+  drawClouds();
   if (timeOfDay === 'twilight' || timeOfDay === 'night') drawMoon();
   else drawSun();
-  drawClouds();
   drawMountainMist();
   drawBeach(gameState === 'playing' ? 300 * speed : 30, lastDt);
 
