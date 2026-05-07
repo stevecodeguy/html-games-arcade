@@ -566,24 +566,38 @@ function drawStars() {
   });
 }
 
-function drawMoon() {
-  const sx = W * 0.75, sy = H * 0.18, sr = H * 0.1;
-  const img = SPRITES.moon;
-  if (!spriteReady(img)) return;
+// Pin sun/moon to the top-right of the canvas. The sprite's image is mostly
+// transparent rays/glow around a centered disk, so we anchor by disk radius
+// (sr) — the visible disk stays fully on screen with a margin, and any
+// transparent ray area is allowed to extend past the edges.
+function getCelestialPlacement(img) {
+  const sr = Math.min(W, H) * 0.1;
   const scale = sr / 80;
   const w = img.width * scale, h = img.height * scale;
-  ctx.drawImage(img, sx - w / 2, sy - h / 2, w, h);
+  const mult = W >= 1000 ? 2 : 1;
+  const marginRight = (sr * 0.8 + 16) * mult;
+  const marginTop = 28 * mult;
+  const sx = W - sr - marginRight;
+  const sy = sr + marginTop;
+  return { sx, sy, w, h, sr };
+}
+
+function drawMoon() {
+  const img = SPRITES.moon;
+  if (!spriteReady(img)) return;
+  const p = getCelestialPlacement(img);
+  ctx.drawImage(img, p.sx - p.w / 2, p.sy - p.h / 2, p.w, p.h);
 }
 
 function drawSun() {
-  const sx = W * 0.75, sy = H * 0.18, sr = H * 0.1;
   const img = SPRITES.sun;
   if (spriteReady(img)) {
-    const scale = sr / 80;
-    const w = img.width * scale, h = img.height * scale;
-    ctx.drawImage(img, sx - w / 2, sy - h / 2, w, h);
+    const p = getCelestialPlacement(img);
+    ctx.drawImage(img, p.sx - p.w / 2, p.sy - p.h / 2, p.w, p.h);
     return;
   }
+  // Fallback procedural draw uses the same anchor logic
+  const sx = W * 0.75, sy = H * 0.18, sr = Math.min(W, H) * 0.1;
   // Fallback procedural draw (unreached once sprite loads)
   const glow = ctx.createRadialGradient(sx, sy, sr * 0.3, sx, sy, sr * 3.5);
   glow.addColorStop(0, 'rgba(255, 230, 100, 0.45)');
