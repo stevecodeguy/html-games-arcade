@@ -163,7 +163,7 @@
     <div class="time-label">MOUNTAIN MIST</div>
     <div class="time-spinner">
       <button id="mistPrev" type="button">&#9664;</button>
-      <span id="mistValue">OFF</span>
+      <span id="mistValue">LIGHT</span>
       <button id="mistNext" type="button">&#9654;</button>
     </div>
   </div>
@@ -218,7 +218,7 @@ let PALETTE = window.PALETTE;
 const TIMES_OF_DAY = ['morning', 'noon', 'afternoon', 'twilight', 'night'];
 let timeOfDay = 'twilight';
 const MIST_LEVELS = ['off', 'light', 'moderate'];
-let mistLevel = 'off';
+let mistLevel = 'light';
 
 function applyStops(grad, stops) {
   stops.forEach(s => grad.addColorStop(s.stop, s.color));
@@ -241,14 +241,17 @@ const SPRITE_FILES = {
   'person-3': 'person-3.png', 'person-4': 'person-4.png',
   'umbrella-red': 'umbrella-red.png', 'umbrella-blue': 'umbrella-blue.png',
   'umbrella-yellow': 'umbrella-yellow.png', 'umbrella-green': 'umbrella-green.png',
-  'towel-orange': 'starfish.png', 'towel-purple': 'sand-castle.png', 'towel-teal': 'beach-ball.png',
+  'towel-orange': 'starfish.png',
+  'beach-asset-1': 'beachAssets01.png', 'beach-asset-2': 'beachAssets02.png',
+  'beach-asset-3': 'beachAssets03.png', 'beach-asset-4': 'beachAssets04.png',
+  'beach-asset-5': 'beachAssets05.png',
   'surfer-stand': 'surfer-stand.png', 'surfer-jump': 'surfer-jump.png',
-  cooler: 'cooler.png',
   'seagull-incoming': 'seagull-incoming.png',
   'obstacle-0': 'obstacle-0.png', 'obstacle-1': 'obstacle-1.png', 'obstacle-2': 'obstacle-2.png',
   'collectable-0': 'collectable-0.png', 'collectable-1': 'collectable-1.png',
   'air-obstacle-0': 'air-obstacle-0.png', 'air-obstacle-1': 'air-obstacle-1.png',
   wave: 'wave.png',
+  'mini-wave': 'mini-wave.png',
 };
 const SPRITE_META = {};
 const SPRITE_DIR = 'images/baja-wave-rider/';
@@ -711,10 +714,10 @@ function makeBeachItem(bx) {
     return { type: 'person', x: bx, variant: 'person-' + Math.floor(Math.random() * 5) };
   } else if (roll < 0.72) {
     return { type: 'umbrella', x: bx, variant: 'umbrella-' + ['red','blue','yellow','green'][Math.floor(Math.random()*4)] };
-  } else if (roll < 0.9) {
-    return { type: 'towel', x: bx, variant: 'towel-' + ['orange','purple','teal'][Math.floor(Math.random()*3)] };
+  } else if (roll < 0.78) {
+    return { type: 'towel', x: bx, variant: 'towel-orange' };
   }
-  return { type: 'cooler', x: bx, variant: 'cooler' };
+  return { type: 'beach-asset', x: bx, variant: 'beach-asset-' + (1 + Math.floor(Math.random() * 5)) };
 }
 function initBeach() {
   beachItems.push({ type: 'palm', x: W * 0.18, h: 190, lean: -0.08, variant: pickPalmVariant() });
@@ -789,7 +792,18 @@ function drawBeach(scrollSpeed, dt) {
   // Update and draw items on the dunes
   beachItems.forEach(item => {
     item.x -= parallaxSpeed * dt;
-    if (item.x < -120) item.x += W * 3 + 120;
+    if (item.x < -120) {
+      item.x += W * 3 + 120;
+      // Re-roll the variant so unlucky initial RNG doesn't permanently hide
+      // any variant for the whole session.
+      if (item.type === 'beach-asset') {
+        item.variant = 'beach-asset-' + (1 + Math.floor(Math.random() * 5));
+      } else if (item.type === 'person') {
+        item.variant = 'person-' + Math.floor(Math.random() * 5);
+      } else if (item.type === 'umbrella') {
+        item.variant = 'umbrella-' + ['red','blue','yellow','green'][Math.floor(Math.random()*4)];
+      }
+    }
     if (item.x < -100 || item.x > W + 100) return;
 
     // Items sit on the foreground dune surface
@@ -821,19 +835,22 @@ const SPRITE_ANCHORS = {
   'umbrella-blue':   { ax: 70, ay: 140 },
   'umbrella-yellow': { ax: 70, ay: 140 },
   'umbrella-green':  { ax: 70, ay: 140 },
-  // towel slots now hold starfish (30x21), sand-castle (60x70), beach-ball (60x60)
+  // towel slot holds starfish (30x21)
   'towel-orange': { ax: 15, ay: 21 },
-  'towel-purple': { ax: 30, ay: 70 },
-  'towel-teal':   { ax: 30, ay: 60 },
+  // beach assets — bottom-center anchors based on each PNG's natural size
+  'beach-asset-1': { ax: 30, ay: 60 },     // 60x60
+  'beach-asset-2': { ax: 20, ay: 61 },     // 40x61
+  'beach-asset-3': { ax: 35, ay: 77 },     // 70x77
+  'beach-asset-4': { ax: 30, ay: 34 },     // 60x34
+  'beach-asset-5': { ax: 30, ay: 70 },     // 60x70
   // surfer (120x110) — kept at the original pivot since physics references it
   'surfer-stand': { ax: 60, ay: 72 },
   'surfer-jump':  { ax: 60, ay: 72 },
-  cooler:             { ax: 35, ay: 77 },   // 70x77
   'seagull-incoming': { ax: 50, ay: 50 },   // 100x100 (centered)
   // wave-surface obstacles — bottom-center
-  'obstacle-0': { ax: 85, ay: 140 },        // 170x140
-  'obstacle-1': { ax: 56, ay: 120 },        // 112x120
-  'obstacle-2': { ax: 83, ay: 220 },        // 167x220
+  'obstacle-0': { ax: 53,   ay: 140 },      // 106x140
+  'obstacle-1': { ax: 56,   ay: 120 },      // 112x120
+  'obstacle-2': { ax: 62.5, ay: 220 },      // 125x220
   // floating collectables — centered
   'collectable-0': { ax: 50, ay: 40 },      // 100x80
   'collectable-1': { ax: 50, ay: 30 },      // 100x59
@@ -1052,6 +1069,15 @@ function snapAbsToDropSide(absX) {
   const phaseDiff = ((targetPhase - phase) % 1 + 1) % 1;
   return absX + phaseDiff * WAVE_PERIOD;
 }
+// Pre-ramp placement: low/flat trough portion of the wave, before the
+// steep ramp begins. Used for a small share of obstacles so the player
+// occasionally has to thread through one in the calm before the climb.
+function snapAbsToPreRampSide(absX) {
+  const phase = (((absX % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  const targetPhase = Math.random() * (RAMP_FRAC * 0.25);
+  const phaseDiff = ((targetPhase - phase) % 1 + 1) % 1;
+  return absX + phaseDiff * WAVE_PERIOD;
+}
 
 // Keep at least this much horizontal space between any two obstacles/collectables.
 const ITEM_MIN_SPACING = 100;
@@ -1064,9 +1090,9 @@ function tooCloseToOthersAbs(absX) {
 // Dimensions match the sprite PNGs; hitbox = 70% of image, centered on image.
 // `sink` = fraction of image height that sits below the wave line (0 = floating, 1 = fully submerged).
 const OBSTACLE_TYPES = [
-  { kind: 'obstacle-0', w: 170, h: 140, weight: 0.40, sink: 0.45 },
-  { kind: 'obstacle-1', w: 112, h: 120, weight: 0.35, sink: 0.60 },
-  { kind: 'obstacle-2', w: 167, h: 220, weight: 0.25, sink: 0.45 },
+  { kind: 'obstacle-0', w: 106, h: 140, weight: 0.40, sink: 0.35 },
+  { kind: 'obstacle-1', w: 112, h: 120, weight: 0.35, sink: 0.50 },
+  { kind: 'obstacle-2', w: 125, h: 220, weight: 0.25, sink: 0.35 },
 ];
 const OBSTACLE_BY_KIND = Object.fromEntries(OBSTACLE_TYPES.map(t => [t.kind, t]));
 
@@ -1081,10 +1107,18 @@ let obstacleSpawnCursor = 0;
 let collectibleSpawnCursor = 0;
 
 function tryCreateObstacleAt(rawAbsX) {
-  const absX = snapAbsToDropSide(rawAbsX);
+  const preRamp = Math.random() < 0.10;
+  const absX = preRamp ? snapAbsToPreRampSide(rawAbsX) : snapAbsToDropSide(rawAbsX);
   const waveIndex = Math.floor(absX / WAVE_PERIOD);
   if (waveIndex === lastObstacleWaveIndex + 1) return false;
   if (tooCloseToOthersAbs(absX)) return false;
+  // Pre-ramp obstacles get a wider exclusion: at least one full wave from
+  // any other obstacle so they always show up in calm water.
+  if (preRamp) {
+    for (const ob of obstacles) {
+      if (Math.abs(ob.absX - absX) < WAVE_PERIOD) return false;
+    }
+  }
   const r = Math.random();
   let acc = 0, def = OBSTACLE_TYPES[OBSTACLE_TYPES.length - 1];
   for (const t of OBSTACLE_TYPES) { acc += t.weight; if (r < acc) { def = t; break; } }
@@ -1778,7 +1812,45 @@ function render() {
     const sink = (OBSTACLE_BY_KIND[ob.kind] || { sink: 0 }).sink;
     const oy = waveAtOb + ob.imgH * sink;
     const bob = Math.sin(time * 2.4 + ob.bobPhase) * 8;
-    drawSpriteVariant(ob.kind, ox, oy + bob);
+    // Buoy-style tilt: rotate around the bottom anchor so the top sways
+    // while the waterline stays put.
+    const tilt = Math.sin(time * 2.4 + ob.bobPhase) * 0.08;
+    ctx.save();
+    ctx.translate(ox, oy + bob);
+    ctx.rotate(tilt);
+    drawSpriteVariant(ob.kind, 0, 0);
+    ctx.restore();
+    // Splash: wave.png tiled twice across the obstacle base. Each tile is
+    // half the obstacle width so the two tiles span its full width.
+    const waveImg = spriteReady(SPRITES['mini-wave']) ? SPRITES['mini-wave'] : SPRITES.wave;
+    if (spriteReady(waveImg)) {
+      // Wave container = four overlapping wave tiles; spans 120% of the
+      // obstacle's width and is centered on the obstacle's bottom-center.
+      const containerW = ob.imgW * 1.2;
+      const tileCount = 4;
+      const overlap = 0.15;
+      const tileW = (containerW / tileCount) * (1 + overlap);
+      const step = (containerW - tileW) / (tileCount - 1);
+      const tileH = tileW * (waveImg.naturalHeight / waveImg.naturalWidth) * 1.4;
+      const splashY = oy + bob - tileH * 0.83;
+      const left = ox - containerW / 2;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      // Source-clip to the top 70% of the wave sprite so only the upper
+      // crest shows in the splash.
+      const srcW = waveImg.naturalWidth;
+      const srcH = waveImg.naturalHeight * 0.7;
+      for (let i = 0; i < tileCount; i++) {
+        // Each tile bobs and sways with its own phase offset so the splash
+        // looks alive instead of a flat strip.
+        const phase = ob.bobPhase + i * 0.9;
+        const tileBob  = Math.sin(time * 3.0 + phase) * 4;
+        const tileSway = Math.cos(time * 2.4 + phase) * 3;
+        ctx.drawImage(waveImg, 0, 0, srcW, srcH,
+          left + i * step + tileSway, splashY + tileBob, tileW, tileH);
+      }
+      ctx.restore();
+    }
   });
 
   // Seagulls (sky obstacles)
