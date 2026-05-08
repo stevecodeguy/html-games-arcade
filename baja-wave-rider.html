@@ -1836,10 +1836,8 @@ function render() {
       const left = ox - containerW / 2;
       ctx.save();
       ctx.globalAlpha = 0.9;
-      // Source-clip to the top 70% of the wave sprite so only the upper
-      // crest shows in the splash.
       const srcW = waveImg.naturalWidth;
-      const srcH = waveImg.naturalHeight * 0.7;
+      const srcH = waveImg.naturalHeight;
       for (let i = 0; i < tileCount; i++) {
         // Each tile bobs and sways with its own phase offset so the splash
         // looks alive instead of a flat strip.
