@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML Games Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0b14; --card:#141627; --line:rgba(255,255,255,0.08); }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter',system-ui,sans-serif; color:#e7e9f5;
+    background:
+      radial-gradient(1100px 600px at 15% -10%, rgba(99,255,224,0.10), transparent 60%),
+      radial-gradient(1000px 600px at 100% 0%, rgba(139,92,246,0.14), transparent 55%),
+      var(--bg);
+    min-height:100vh; padding:48px 22px 72px;
+  }
+  header { max-width:1080px; margin:0 auto 38px; text-align:center; }
+  h1 {
+    font-family:'Orbitron',sans-serif; font-weight:900; letter-spacing:3px;
+    font-size:clamp(30px,6vw,56px); line-height:1.05;
+    background:linear-gradient(90deg,#63FFE0,#8B5CF6 55%,#FF6B35);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  header p { margin-top:12px; color:#9aa0c0; font-size:15px; letter-spacing:0.5px; }
+  .grid {
+    max-width:1080px; margin:0 auto;
+    display:grid; gap:22px;
+    grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+  }
+  .card {
+    display:flex; flex-direction:column; text-decoration:none; color:inherit;
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    overflow:hidden; transition:transform .16s ease, box-shadow .16s ease, border-color .16s;
+  }
+  .card:hover { transform:translateY(-6px); border-color:rgba(255,255,255,0.18);
+    box-shadow:0 18px 50px rgba(0,0,0,0.45); }
+  .thumb { position:relative; height:170px; overflow:hidden; }
+  .thumb .scene { position:absolute; inset:0; }
+  .thumb .emoji {
+    position:absolute; right:14px; bottom:10px; font-size:42px;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+  }
+  .badge {
+    position:absolute; top:12px; left:12px; font-family:'Orbitron',sans-serif;
+    font-size:9px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+    padding:5px 10px; border-radius:20px; background:rgba(0,0,0,0.4);
+    border:1px solid rgba(255,255,255,0.2); color:#fff;
+  }
+  .body { padding:18px 20px 22px; flex:1; display:flex; flex-direction:column; }
+  .body h2 { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:800; letter-spacing:1px; }
+  .body .sub { color:#8b91b4; font-size:12.5px; margin-top:4px; letter-spacing:1px; text-transform:uppercase; }
+  .body p { color:#b9bdd8; font-size:14px; line-height:1.55; margin-top:12px; flex:1; }
+  .play {
+    margin-top:18px; align-self:flex-start;
+    font-family:'Orbitron',sans-serif; font-size:12px; font-weight:700; letter-spacing:1px;
+    padding:10px 22px; border-radius:30px; color:#0a0b14;
+    background:linear-gradient(135deg,#63FFE0,#8B5CF6);
+    transition:filter .15s, transform .15s;
+  }
+  .card:hover .play { filter:brightness(1.08); transform:scale(1.04); }
+
+  /* --- per-game procedural thumbnails (no image files needed) --- */
+  .baja { background:linear-gradient(180deg,#f2894a,#f89d5c 40%,#fecb78 70%,#00b4c8); }
+  .baja::after { content:""; position:absolute; left:-10%; right:-10%; bottom:0; height:46%;
+    background:linear-gradient(180deg,#19c2cf,#015e7a);
+    clip-path:polygon(0 38%,12% 12%,24% 38%,36% 12%,48% 38%,60% 12%,72% 38%,84% 12%,100% 38%,100% 100%,0 100%); }
+  .wrig { background:linear-gradient(180deg,#5e2a86,#e8568f 55%,#ff8f6b); }
+  .wrig::after { content:""; position:absolute; left:-10%; right:-10%; bottom:0; height:50%;
+    background:linear-gradient(90deg,#ff8ad1,#ffd24a 30%,#7af0a0 55%,#5ec8ff 78%,#b074ff);
+    clip-path:polygon(0 40%,12% 14%,24% 40%,36% 14%,48% 40%,60% 14%,72% 40%,84% 14%,100% 40%,100% 100%,0 100%); }
+  .mordor { background:linear-gradient(180deg,#1a0810,#6e2218 65%,#a83a1c); }
+  .mordor::after { content:""; position:absolute; left:-10%; right:-10%; bottom:0; height:42%;
+    background:linear-gradient(180deg,#3a1410,#100707);
+    clip-path:polygon(0 44%,12% 18%,24% 44%,36% 18%,48% 44%,60% 18%,72% 44%,84% 18%,100% 44%,100% 100%,0 100%); }
+  .mordor .eye { position:absolute; top:30px; right:30px; width:30px; height:30px; border-radius:50%;
+    background:radial-gradient(circle,#fff1c0,#ffb030 45%,#e85a14 80%,#7a1e08);
+    box-shadow:0 0 26px 8px rgba(255,120,40,0.55); }
+
+  footer { max-width:1080px; margin:46px auto 0; text-align:center; color:#6b7099; font-size:13px; }
+  footer a { color:#8b91b4; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>HTML GAMES ARCADE</h1>
+    <p>A little collection of canvas games — no installs, just click and play.</p>
+  </header>
+
+  <main class="grid">
+
+    <a class="card" href="baja-wave-rider.html">
+      <div class="thumb">
+        <div class="scene baja"></div>
+        <span class="badge">Endless Surfer</span>
+        <span class="emoji">🏄</span>
+      </div>
+      <div class="body">
+        <h2>Baja Wave Rider</h2>
+        <div class="sub">Surf the Crests</div>
+        <p>Ride a neon Baja wave, jump off the crests, snag dew cans and dodge buoys &amp; seagulls. Higher on the wave = bigger air.</p>
+        <span class="play">PLAY ▸</span>
+      </div>
+    </a>
+
+    <a class="card" href="wrigglers-wave-rider.html">
+      <div class="thumb">
+        <div class="scene wrig"></div>
+        <span class="badge">Candy Runner</span>
+        <span class="emoji">🪱</span>
+      </div>
+      <div class="body">
+        <h2>WRIGGLERS</h2>
+        <div class="sub">Sour Wave Rider</div>
+        <p>A gummy worm surfs a rainbow river of sour syrup. Grab worms &amp; sour sugar, dodge gumdrops, lollipops and candy wasps. Pick your flavor.</p>
+        <span class="play">PLAY ▸</span>
+      </div>
+    </a>
+
+    <a class="card" href="mordor-run.html">
+      <div class="thumb">
+        <div class="scene mordor"></div>
+        <span class="eye"></span>
+        <span class="badge">Epic Runner</span>
+        <span class="emoji">💍</span>
+      </div>
+      <div class="body">
+        <h2>Mordor Run</h2>
+        <div class="sub">Frodo &amp; Sam's Last March</div>
+        <p>Lead Frodo &amp; Sam across Mordor — leap over orcs &amp; spiders, duck Nazgûl, gather lembas, and stay out of the Eye of Sauron's searchlight.</p>
+        <span class="play">PLAY ▸</span>
+      </div>
+    </a>
+
+  </main>
+
+  <footer>
+    Built with plain HTML5 Canvas · <a href="https://github.com/stevecodeguy/html-games-arcade">source on GitHub</a>
+  </footer>
+</body>
+</html>
