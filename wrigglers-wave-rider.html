@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WRIGGLERS — Sour Wave Rider</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #2a0a3a; touch-action: none; font-family: 'Fredoka', sans-serif; }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 10;
+    pointer-events: none; padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .hud-box {
+    background: rgba(58, 14, 74, 0.55);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 2px solid rgba(255, 200, 90, 0.4);
+    border-radius: 18px; padding: 8px 20px;
+    box-shadow: 0 0 22px rgba(255, 120, 200, 0.25);
+  }
+  .hud-label {
+    font-family: 'Baloo 2', sans-serif; font-size: 10px; font-weight: 800;
+    color: #FFE07A; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1px;
+  }
+  .hud-value {
+    font-family: 'Baloo 2', sans-serif; font-size: 26px; font-weight: 800;
+    color: #fff; text-shadow: 0 0 14px rgba(255,120,200,0.6), 2px 2px 0 rgba(120,30,140,0.5);
+  }
+
+  #overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 35%, rgba(90,20,120,0.82), rgba(40,8,60,0.94));
+    color: #fff; text-align: center; padding: 20px;
+  }
+  #overlay.hidden { display: none; }
+  #overlay .logo {
+    font-family: 'Baloo 2', sans-serif; font-size: clamp(40px, 11vw, 84px); font-weight: 800;
+    letter-spacing: 2px; line-height: 0.95;
+    background: linear-gradient(180deg, #FFE07A 0%, #FF8DC7 45%, #6EE7FF 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(3px 4px 0 rgba(120,20,90,0.55));
+    margin-bottom: 2px;
+  }
+  #overlay h2 {
+    font-family: 'Baloo 2', sans-serif; font-size: clamp(13px, 3.5vw, 19px); font-weight: 700;
+    color: #6EE7FF; letter-spacing: 5px; margin-bottom: 18px; text-transform: uppercase;
+  }
+  #overlay p { font-size: 15px; color: #e9c6ff; margin: 4px 0; }
+  .score-display {
+    font-family: 'Baloo 2', sans-serif; font-size: 34px; font-weight: 800;
+    color: #FFE07A; text-shadow: 0 0 20px rgba(255,180,80,0.5); margin: 12px 0 2px;
+  }
+  #overlay button.start {
+    margin-top: 22px; padding: 16px 52px; font-family: 'Baloo 2', sans-serif;
+    font-size: 20px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(135deg, #FF5FA2, #FFB13D); color: #fff;
+    border: none; border-radius: 50px; cursor: pointer; pointer-events: all;
+    box-shadow: 0 6px 0 #b22e74, 0 10px 24px rgba(255,95,162,0.45);
+    transition: transform 0.12s, box-shadow 0.12s; text-shadow: 1px 1px 0 rgba(140,30,90,0.5);
+  }
+  #overlay button.start:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #b22e74, 0 14px 30px rgba(255,95,162,0.55); }
+  #overlay button.start:active { transform: translateY(3px); box-shadow: 0 3px 0 #b22e74; }
+
+  .picker-row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+  .picker { }
+  .picker .picker-label {
+    font-family: 'Baloo 2', sans-serif; font-size: 10px; font-weight: 800;
+    color: #FFE07A; letter-spacing: 3px; margin-bottom: 7px;
+  }
+  .spinner {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 180, 90, 0.35);
+    border-radius: 30px; padding: 5px 12px;
+  }
+  .spinner button {
+    pointer-events: all; width: 30px; height: 30px;
+    border: none; background: rgba(255,160,200,0.22); color: #fff;
+    border-radius: 50%; font-size: 12px; cursor: pointer; line-height: 1;
+    font-family: 'Baloo 2', sans-serif; font-weight: 800; transition: background 0.15s;
+  }
+  .spinner button:hover { background: rgba(255,160,200,0.45); }
+  .spinner .val {
+    font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px;
+    color: #fff; letter-spacing: 1px; min-width: 120px; text-align: center;
+  }
+  .controls-box {
+    margin-top: 22px; font-size: 12px; color: #d8b6f0; line-height: 2;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,180,90,0.18);
+    border-radius: 14px; padding: 10px 22px;
+  }
+  .controls-box kbd {
+    background: rgba(255,160,200,0.18); color: #FFE07A; padding: 2px 8px;
+    border-radius: 6px; font-family: 'Baloo 2', sans-serif; font-size: 10px; font-weight: 700;
+  }
+  .tagline { font-size: 13px; color: #FF9ECf; letter-spacing: 2px; margin-top: 2px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="hud-box">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="scoreVal">0</div>
+  </div>
+  <div class="hud-box" style="text-align:right">
+    <div class="hud-label">Worms</div>
+    <div class="hud-value" id="wormVal">0</div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="logo">WRIGGLERS</div>
+  <h2>Sour Wave Rider</h2>
+  <div class="tagline">RIDE THE SOUR WAVE 🪱</div>
+  <div id="finalScore" class="score-display"></div>
+  <p id="finalDist"></p>
+  <div class="picker-row">
+    <div class="picker">
+      <div class="picker-label">TIME OF DAY</div>
+      <div class="spinner">
+        <button id="timePrev" type="button">&#9664;</button>
+        <span class="val" id="timeValue">SUNSET</span>
+        <button id="timeNext" type="button">&#9654;</button>
+      </div>
+    </div>
+    <div class="picker">
+      <div class="picker-label">FLAVOR</div>
+      <div class="spinner">
+        <button id="flavPrev" type="button">&#9664;</button>
+        <span class="val" id="flavValue">RAINBOW</span>
+        <button id="flavNext" type="button">&#9654;</button>
+      </div>
+    </div>
+  </div>
+  <button id="startBtn" class="start">START WRIGGLIN'</button>
+  <div class="controls-box">
+    <kbd>SPACE</kbd> / <kbd>TAB</kbd> / <kbd>UP</kbd> Wriggle-jump off the wave<br>
+    Higher on the crest = higher jump &nbsp;|&nbsp; Tap again mid-air = double hop &nbsp;|&nbsp; Touch supported
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ============================================================
+// WRIGGLERS — SOUR WAVE RIDER
+// A gummy-worm advergame. Pure Canvas 2D, fully procedural art,
+// no external assets. Crest-jump wave physics.
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const REF_H = 800;
+const SURFER_X = 120;
+let W, H, WAVE_BASELINE, GRAVITY, JUMP_VEL, uiScale = 1;
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  uiScale = canvas.height / REF_H;
+  H = REF_H;
+  W = canvas.width / uiScale;
+  WAVE_BASELINE = H * 0.93;
+  const jumpHeight = H * 0.75;
+  const JUMP_TIME = 1.4;
+  GRAVITY = 8 * jumpHeight / (JUMP_TIME * JUMP_TIME);
+  JUMP_VEL = GRAVITY * JUMP_TIME / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+
+// ============================================================
+// PALETTES — candy sky + sour-syrup flavors
+// ============================================================
+const SKY = {
+  morning: [['#ffd9ec',0],['#ffc4e6',0.3],['#ffe3b8',0.6],['#fff0cf',1]],
+  noon:    [['#7fe9ff',0],['#a9f0ff',0.35],['#d6f6ff',0.7],['#fff4ef',1]],
+  afternoon:[['#ff9cd6',0],['#ffb3c8',0.4],['#ffd1a0',0.75],['#ffe9bd',1]],
+  sunset:  [['#5e2a86',0],['#9b3e9e',0.28],['#e8568f',0.55],['#ff8f6b',0.8],['#ffce7a',1]],
+  night:   [['#160a2e',0],['#27124d',0.35],['#3a1c63',0.65],['#5a2b7a',0.9],['#7a3d8f',1]],
+};
+const TIMES = ['morning','noon','afternoon','sunset','night'];
+let timeOfDay = 'sunset';
+
+// Each flavor recolors the syrup wave (crest foam stays sugary white).
+const FLAVORS = {
+  rainbow: { name:'RAINBOW', body:[['#fff6fb',0],['#ff8ad1',0.14],['#ffd24a',0.34],['#7af0a0',0.54],['#5ec8ff',0.74],['#b074ff',1]], accent:'#ff5fa2' },
+  blueraspberry: { name:'BLUE RASPBERRY', body:[['#eafaff',0],['#7fe6ff',0.18],['#3aa9ff',0.45],['#2a5cff',0.75],['#16277a',1]], accent:'#3aa9ff' },
+  sourapple: { name:'SOUR APPLE', body:[['#f4ffe6',0],['#b6f06a',0.2],['#6fd23a',0.5],['#2f9a2a',0.8],['#125214',1]], accent:'#7ed637' },
+  cherry: { name:'WILD CHERRY', body:[['#fff0f2',0],['#ff8a9c',0.2],['#ff3b5c',0.5],['#c01030',0.8],['#5e0a1c',1]], accent:'#ff3b5c' },
+};
+const FLAVOR_KEYS = Object.keys(FLAVORS);
+let flavor = 'rainbow';
+
+function applyStops(grad, stops) { stops.forEach(s => grad.addColorStop(s[1], s[0])); }
+
+// ============================================================
+// Game state
+// ============================================================
+let gameState = 'start';
+let score = 0, distance = 0, speed = 1.0, time = 0, bonusScore = 0, wormCount = 0;
+let waveOffset = 0, lastMilestone = 0, distantWaveOffset = 0;
+
+let surferX = 0, surferY = 0, surferVY = 0;
+let isJumping = false, canJump = false, doubleJumpUsed = false;
+let surferAngle = 0, surferTrail = [], wriggle = 0;
+
+let jumpKeyHeld = false;
+const JUMP_CUT = 0.45;
+
+let shakeIntensity = 0;
+function triggerShake(i) { shakeIntensity = Math.max(shakeIntensity, i); }
+function getShakeOffset() {
+  if (shakeIntensity > 0.3) {
+    const ox = (Math.random() - 0.5) * shakeIntensity;
+    const oy = (Math.random() - 0.5) * shakeIntensity;
+    shakeIntensity *= 0.88;
+    return { x: ox, y: oy };
+  }
+  shakeIntensity = 0;
+  return { x: 0, y: 0 };
+}
+
+let obstacles = [], collectibles = [], particles = [], speedLines = [], popups = [];
+let nearMissTimer = 0, flashColor = null, flashTimer = 0;
+
+// Background twinkles (sugar sparkles in dark sky)
+const stars = [];
+for (let i = 0; i < 200; i++) stars.push({
+  x: Math.random(), y: Math.random() * 0.55,
+  r: 0.6 + Math.random() * 1.8, sp: 1 + Math.random() * 3,
+  ph: Math.random() * Math.PI * 2, b: 0.3 + Math.random() * 0.7
+});
+
+// Cotton-candy clouds
+let clouds = [];
+for (let i = 0; i < 9; i++) clouds.push({
+  x: Math.random() * 1.8 - 0.4, y: 0.08 + Math.random() * 0.22,
+  w: 80 + Math.random() * 140, speed: 0.004 + Math.random() * 0.006,
+  tint: Math.random() < 0.5 ? '#ffc0e6' : '#ffffff', op: 0.5 + Math.random() * 0.4
+});
+
+// ============================================================
+// WAVE SURFACE — triangle waves (ramp → peak → drop → trough)
+// ============================================================
+const WAVE_PERIOD = 491;
+const WAVE_AMP = 0.14;
+const RAMP_FRAC = 0.55, DROP_FRAC = 0.28;
+
+function triangleShape(t) {
+  if (t < RAMP_FRAC) return t / RAMP_FRAC;
+  if (t < RAMP_FRAC + DROP_FRAC) return 1.0 - (t - RAMP_FRAC) / DROP_FRAC;
+  return 0;
+}
+function getWavePhase(x) {
+  const wx = x + waveOffset;
+  return (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+}
+function getWaveHeight(x) { return triangleShape(getWavePhase(x)); }
+function getWaveY(x) {
+  const wx = x + waveOffset;
+  const phase = (((wx % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  let y = triangleShape(phase) * (H * WAVE_AMP);
+  y += Math.sin(wx * 0.08 + 3.0) * (H * 0.0015);
+  return WAVE_BASELINE - y;
+}
+function getWaveSlope(x) { return getWaveY(x + 4) - getWaveY(x - 4); }
+function getJumpPower(x) {
+  const h = getWaveHeight(x);
+  const MIN_POWER = 0.65;
+  return MIN_POWER + (1 - MIN_POWER) * h;
+}
+
+// ============================================================
+// DRAW — SKY / BACKGROUND
+// ============================================================
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, WAVE_BASELINE);
+  applyStops(grad, SKY[timeOfDay] || SKY.sunset);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, WAVE_BASELINE);
+}
+
+function drawStars() {
+  if (timeOfDay !== 'sunset' && timeOfDay !== 'night') return;
+  stars.forEach(s => {
+    if (s.y > 0.32) return;
+    const tw = 0.4 + 0.6 * Math.abs(Math.sin(time * s.sp + s.ph));
+    ctx.fillStyle = `rgba(255, 248, 220, ${s.b * tw * 0.7})`;
+    ctx.beginPath();
+    // tiny 4-point sugar sparkle
+    const x = s.x * W, y = s.y * H, r = s.r;
+    ctx.moveTo(x, y - r * 2); ctx.lineTo(x + r * 0.5, y); ctx.lineTo(x, y + r * 2);
+    ctx.lineTo(x - r * 0.5, y); ctx.closePath();
+    ctx.moveTo(x - r * 2, y); ctx.lineTo(x, y + r * 0.5); ctx.lineTo(x + r * 2, y);
+    ctx.lineTo(x, y - r * 0.5); ctx.closePath();
+    ctx.fill();
+  });
+}
+
+// Giant translucent gummy-bear "mountain" in the background
+function drawGummyBear() {
+  const cx = W * 0.34;
+  const baseY = WAVE_BASELINE - H * 0.06;
+  const s = Math.min(W, H) * 0.0011 * 320; // overall scale
+  const col = (timeOfDay === 'night' || timeOfDay === 'sunset') ? '255,120,200' : '255,150,70';
+  ctx.save();
+  ctx.translate(cx, baseY);
+  ctx.scale(s / 320, s / 320);
+  ctx.globalAlpha = 0.5;
+  const grad = ctx.createLinearGradient(0, -560, 0, 0);
+  grad.addColorStop(0, `rgba(${col},0.85)`);
+  grad.addColorStop(1, `rgba(${col},0.35)`);
+  ctx.fillStyle = grad;
+  const blob = (x, y, rx, ry) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI*2); ctx.fill(); };
+  // body
+  blob(0, -230, 180, 230);
+  // head
+  blob(0, -470, 130, 120);
+  // ears
+  blob(-95, -560, 45, 45); blob(95, -560, 45, 45);
+  // arms
+  blob(-200, -300, 70, 110); blob(200, -300, 70, 110);
+  // legs
+  blob(-110, -70, 80, 90); blob(110, -70, 80, 90);
+  // glossy highlight
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = '#ffffff';
+  blob(-55, -300, 40, 150);
+  ctx.restore();
+}
+
+// Lollipop-swirl sun / peppermint moon, pinned top-right
+function getCelestial() {
+  const sr = Math.min(W, H) * 0.1;
+  const mult = W >= 1000 ? 2 : 1;
+  const sx = W - sr - (sr * 0.8 + 16) * mult;
+  const sy = sr + 28 * mult;
+  return { sx, sy, sr };
+}
+function drawSwirl(cx, cy, r, c1, c2, spin) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  // glow
+  const g = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 2.6);
+  g.addColorStop(0, `rgba(255,235,160,0.30)`);
+  g.addColorStop(1, 'rgba(255,235,160,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, r * 2.6, 0, Math.PI*2); ctx.fill();
+  ctx.rotate(spin);
+  // candy disc base
+  ctx.fillStyle = c1;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+  // spiral swirl
+  ctx.strokeStyle = c2; ctx.lineWidth = r * 0.18; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let a = 0; a < Math.PI * 6; a += 0.12) {
+    const rr = r * (a / (Math.PI * 6));
+    const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
+    a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  // gloss
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.ellipse(-r*0.3, -r*0.35, r*0.28, r*0.18, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawSun() {
+  const p = getCelestial();
+  drawSwirl(p.sx, p.sy, p.sr, '#ffd24a', '#ff7aa8', time * 0.3);
+}
+function drawMoon() {
+  const p = getCelestial();
+  drawSwirl(p.sx, p.sy, p.sr, '#fff5f8', '#ff5b7a', time * 0.2);
+}
+
+function drawClouds() {
+  clouds.forEach(c => {
+    const cx = c.x * W, cy = c.y * H, w = c.w, h = c.w * 0.42;
+    ctx.save();
+    ctx.globalAlpha = c.op * 0.55;
+    ctx.fillStyle = c.tint;
+    const puff = (dx, dy, r) => { ctx.beginPath(); ctx.arc(cx+dx, cy+dy, r, 0, Math.PI*2); ctx.fill(); };
+    puff(-w*0.28, 0, h*0.55); puff(0, -h*0.18, h*0.7); puff(w*0.28, 0, h*0.55);
+    puff(-w*0.05, h*0.12, h*0.5); puff(w*0.12, h*0.12, h*0.48);
+    ctx.restore();
+  });
+}
+
+// ============================================================
+// CANDY BEACH BACKGROUND (rolling frosting dunes + candy props)
+// ============================================================
+const beachItems = [];
+const PROP_TYPES = ['lolly','gumdrop','candycane','sprinkle','peppermint'];
+function makeProp(bx) {
+  const r = Math.random();
+  if (r < 0.34) return { type:'gumdrop', x:bx, c:randCandy(), s:0.7+Math.random()*0.7 };
+  if (r < 0.58) return { type:'lolly', x:bx, c:randCandy(), c2:randCandy(), s:0.7+Math.random()*0.6 };
+  if (r < 0.74) return { type:'candycane', x:bx, s:0.8+Math.random()*0.6 };
+  if (r < 0.88) return { type:'peppermint', x:bx, s:0.6+Math.random()*0.5 };
+  return { type:'sprinkle', x:bx, s:0.9+Math.random()*0.8 };
+}
+function randCandy() {
+  const c = ['#ff5fa2','#ffb13d','#7ed637','#5ec8ff','#b074ff','#ff5b5b','#ffe07a'];
+  return c[Math.floor(Math.random()*c.length)];
+}
+const BEACH_WINDOW = 450, BEACH_MAX = 3, BEACH_GAP = 36;
+function initBeach() {
+  const strip = W * 3, half = BEACH_WINDOW / 2;
+  const target = Math.floor(strip / 95);
+  let attempts = 0;
+  while (beachItems.length < target && attempts < target * 12) {
+    attempts++;
+    const bx = Math.random() * strip;
+    let near = 0, close = false;
+    for (const it of beachItems) {
+      const d = Math.abs(it.x - bx);
+      if (d < BEACH_GAP) { close = true; break; }
+      if (d < half) near++;
+    }
+    if (!close && near < BEACH_MAX) beachItems.push(makeProp(bx));
+  }
+}
+initBeach();
+
+let beachDuneOffset = 0;
+function getDuneY(x) {
+  const dx = x + beachDuneOffset;
+  let y = Math.sin(dx * 0.004) * (H * 0.05);
+  y += Math.sin(dx * 0.009 + 1.2) * (H * 0.03);
+  y += Math.sin(dx * 0.018 + 2.5) * (H * 0.012);
+  return y;
+}
+
+function drawBeach(scrollSpeed, dt) {
+  const beachH = H * 0.4;
+  const beachY = WAVE_BASELINE - beachH + H * 0.02;
+  const par = scrollSpeed * 0.15;
+  beachDuneOffset += par * dt;
+
+  // frosting dunes — back layer
+  let g = ctx.createLinearGradient(0, beachY, 0, beachY + beachH);
+  g.addColorStop(0, '#ffd6ec'); g.addColorStop(0.5, '#ffb8d9'); g.addColorStop(1, '#e98fc2');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(0, beachY + beachH + 10);
+  for (let x = 0; x <= W; x += 4) ctx.lineTo(x, beachY + beachH * 0.35 + getDuneY(x));
+  ctx.lineTo(W, beachY + beachH + 10); ctx.closePath(); ctx.fill();
+
+  // front layer (more saturated)
+  g = ctx.createLinearGradient(0, beachY + beachH * 0.4, 0, beachY + beachH);
+  g.addColorStop(0, '#ffc36e'); g.addColorStop(0.5, '#ffaf57'); g.addColorStop(1, '#f0913f');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(0, beachY + beachH + 10);
+  for (let x = 0; x <= W; x += 4) ctx.lineTo(x, beachY + beachH * 0.55 + getDuneY(x + 200) * 0.7);
+  ctx.lineTo(W, beachY + beachH + 10); ctx.closePath(); ctx.fill();
+
+  beachItems.forEach(it => {
+    it.x -= par * dt;
+    if (it.x < -120) {
+      it.x += W * 3 + 120;
+      const np = makeProp(it.x); Object.assign(it, np);
+    }
+    if (it.x < -100 || it.x > W + 100) return;
+    const duneY = beachY + beachH * 0.55 + getDuneY(it.x + 200) * 0.7;
+    drawProp(it, it.x, duneY);
+  });
+}
+
+function drawProp(it, x, y) {
+  const s = it.s || 1;
+  if (it.type === 'gumdrop') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    const r = 26;
+    const g = ctx.createLinearGradient(0, -r*1.6, 0, 0);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, it.c); g.addColorStop(1, shade(it.c, -0.25));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.bezierCurveTo(-r, -r*1.6, r, -r*1.6, r, 0);
+    ctx.closePath(); ctx.fill();
+    sugarSpeckle(0, -r*0.7, r*1.6, r*1.4, 10);
+    ctx.restore();
+  } else if (it.type === 'lolly') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -46); ctx.stroke();
+    drawSwirlDisc(0, -60, 22, it.c, it.c2);
+    ctx.restore();
+  } else if (it.type === 'candycane') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    drawCandyCane(0, 0, 74);
+    ctx.restore();
+  } else if (it.type === 'peppermint') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    drawSwirlDisc(0, -18, 18, '#ffffff', '#ff4d6d');
+    ctx.restore();
+  } else { // sprinkle pile
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    for (let i = 0; i < 7; i++) {
+      ctx.save();
+      ctx.translate((i-3)*7, -Math.random()*4);
+      ctx.rotate((i*1.7) % Math.PI);
+      ctx.fillStyle = randCandy();
+      roundRect(-2.5, -6, 5, 12, 2.5); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
+
+function drawSwirlDisc(cx, cy, r, c1, c2) {
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.fillStyle = c1;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = c2; ctx.lineWidth = r*0.32; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let a = 0; a < Math.PI*5; a += 0.14) {
+    const rr = r * (a/(Math.PI*5));
+    const px = Math.cos(a)*rr, py = Math.sin(a)*rr;
+    a === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.ellipse(-r*0.3,-r*0.35, r*0.26, r*0.16, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawCandyCane(x, y, h) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.lineCap = 'round'; ctx.lineWidth = 14;
+  // white base
+  ctx.strokeStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, -h*0.75);
+  ctx.arc(11, -h*0.75, 11, Math.PI, Math.PI*1.9, false);
+  ctx.stroke();
+  // red stripes via dashed overlay
+  ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 14; ctx.setLineDash([9, 11]);
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, -h*0.75);
+  ctx.arc(11, -h*0.75, 11, Math.PI, Math.PI*1.9, false);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ============================================================
+// helpers
+// ============================================================
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+  r = Math.max(0, Math.min(255, r + amt*255));
+  g = Math.max(0, Math.min(255, g + amt*255));
+  b = Math.max(0, Math.min(255, b + amt*255));
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
+// scatter little white sugar crystals over a region (deterministic-ish via index)
+function sugarSpeckle(cx, cy, w, h, n) {
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.39996, rr = Math.sqrt((i+0.5)/n);
+    const px = cx + Math.cos(a) * (w/2) * rr;
+    const py = cy + Math.sin(a) * (h/2) * rr;
+    ctx.fillRect(px, py, 1.6, 1.6);
+  }
+}
+
+// ============================================================
+// GUMMY WORM rendering (used for surfer + collectibles)
+// segs: number of beads; len: total length; th: thickness;
+// arc: vertical bend; c1/c2 alternating stripe colors; head: draw eyes
+// ============================================================
+function drawWorm(cx, cy, len, th, arc, c1, c2, headPhase) {
+  const segs = 9;
+  const pts = [];
+  for (let i = 0; i < segs; i++) {
+    const t = i / (segs - 1);
+    const px = -len/2 + t * len;
+    // bend + a gentle wriggle wave
+    const py = Math.sin(t * Math.PI) * -arc + Math.sin(t * Math.PI * 3 + headPhase) * th * 0.18;
+    pts.push([px, py]);
+  }
+  ctx.save();
+  ctx.translate(cx, cy);
+  // soft shadow underglow
+  ctx.save();
+  ctx.globalAlpha = 0.18; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(0, th*0.7, len*0.42, th*0.4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  // body beads (back to front so head sits on top)
+  for (let i = 0; i < segs; i++) {
+    const [px, py] = pts[i];
+    const col = i % 2 === 0 ? c1 : c2;
+    const r = th * (0.5 + 0.12 * Math.sin(i)); // slight taper feel
+    const rr = i === segs-1 ? th*0.62 : (i === 0 ? th*0.4 : r);
+    const g = ctx.createRadialGradient(px - rr*0.3, py - rr*0.4, rr*0.1, px, py, rr);
+    g.addColorStop(0, shade(col, 0.32));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, shade(col, -0.22));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI*2); ctx.fill();
+    // gloss dot
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath(); ctx.ellipse(px - rr*0.32, py - rr*0.42, rr*0.28, rr*0.18, -0.5, 0, Math.PI*2); ctx.fill();
+  }
+  // sugar coating speckles along the body
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < segs*3; i++) {
+    const t = (i % segs) / (segs - 1);
+    const bx = -len/2 + t * len + (Math.sin(i*12.9)*th*0.5);
+    const by = Math.sin(t*Math.PI)*-arc + (Math.cos(i*7.3)*th*0.45);
+    ctx.fillRect(bx, by, 1.4, 1.4);
+  }
+  // head (front-most bead) + face
+  const head = pts[segs-1];
+  const hr = th * 0.62;
+  // eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(head[0]+hr*0.25, head[1]-hr*0.45, hr*0.32, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head[0]+hr*0.7, head[1]-hr*0.35, hr*0.32, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#221033';
+  ctx.beginPath(); ctx.arc(head[0]+hr*0.32, head[1]-hr*0.45, hr*0.16, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(head[0]+hr*0.77, head[1]-hr*0.35, hr*0.16, 0, Math.PI*2); ctx.fill();
+  // little smile
+  ctx.strokeStyle = '#3a1030'; ctx.lineWidth = Math.max(1.2, hr*0.12); ctx.lineCap='round';
+  ctx.beginPath(); ctx.arc(head[0]+hr*0.5, head[1]+hr*0.05, hr*0.35, 0.15, Math.PI-0.15); ctx.stroke();
+  ctx.restore();
+}
+
+// ============================================================
+// WAVE DRAW — glossy sour syrup with sugary foam crest
+// ============================================================
+function drawWave() {
+  const amp = H * WAVE_AMP;
+  const waveTop = WAVE_BASELINE - amp;
+  const f = FLAVORS[flavor] || FLAVORS.rainbow;
+  const grad = ctx.createLinearGradient(0, waveTop, 0, H);
+  applyStops(grad, f.body);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 3) ctx.lineTo(x, getWaveY(x));
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+
+  // glossy sheen band near the top of the syrup
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  const sheen = ctx.createLinearGradient(0, waveTop, 0, waveTop + amp * 0.9);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.9)');
+  sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sheen;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 3) ctx.lineTo(x, getWaveY(x));
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // sugary foam crest line
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.shadowColor = 'rgba(255,255,255,0.6)'; ctx.shadowBlur = 8;
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 3) {
+    const y = getWaveY(x);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // sugar sparkle along upper ramp
+  for (let x = 0; x < W; x += 22) {
+    const phase = getWavePhase(x);
+    if (phase > 0.2 && phase < RAMP_FRAC) {
+      const y = getWaveY(x);
+      const a = 0.2 + 0.2 * Math.sin(x * 0.05 + time * 3);
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.fillRect(x, y + 2, 2, 2);
+    }
+  }
+}
+
+// ============================================================
+// JUMP INDICATOR
+// ============================================================
+function drawJumpIndicator() {
+  if (isJumping || gameState !== 'playing' || !canJump) return;
+  const power = getJumpPower(surferX);
+  const pulse = 0.7 + 0.3 * Math.sin(time * 8);
+  ctx.save();
+  ctx.fillStyle = `rgba(255, 224, 122, ${power * pulse * 0.18})`;
+  ctx.beginPath(); ctx.arc(surferX, surferY - 10, 35 + power * 15, 0, Math.PI*2); ctx.fill();
+  const as = 0.5 + power * 0.5;
+  const ay = surferY - 72 - Math.sin(time * 6) * 4;
+  ctx.fillStyle = `rgba(255, 224, 122, ${power * pulse * 0.95})`;
+  ctx.beginPath();
+  ctx.moveTo(surferX, ay - 12*as);
+  ctx.lineTo(surferX - 8*as, ay); ctx.lineTo(surferX - 3*as, ay);
+  ctx.lineTo(surferX - 3*as, ay + 8*as); ctx.lineTo(surferX + 3*as, ay + 8*as);
+  ctx.lineTo(surferX + 3*as, ay); ctx.lineTo(surferX + 8*as, ay);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// SURFER — gummy worm on a wafer board
+// ============================================================
+function drawSurfer(x, y, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-angle);
+  // wafer / candy surfboard
+  ctx.save();
+  ctx.translate(0, 16);
+  const bw = 96, bh = 16;
+  const bg = ctx.createLinearGradient(0, -bh/2, 0, bh/2);
+  bg.addColorStop(0, '#ffe6a8'); bg.addColorStop(1, '#d99a4e');
+  ctx.fillStyle = bg;
+  roundRect(-bw/2, -bh/2, bw, bh, 8); ctx.fill();
+  // rainbow stripe on board
+  ctx.fillStyle = (FLAVORS[flavor]||FLAVORS.rainbow).accent;
+  roundRect(-bw/2+6, -2, bw-12, 4, 2); ctx.fill();
+  ctx.restore();
+  // the worm — arches up more while jumping
+  const arc = isJumping ? 26 : 14;
+  drawWorm(0, -2, 84, 13, arc, '#ff4d6d', '#ffd23d', wriggle);
+  ctx.restore();
+}
+
+function drawSurferTrail() {
+  for (let i = 1; i < surferTrail.length; i++) {
+    const t = surferTrail[i];
+    ctx.fillStyle = `rgba(255, 180, 90, ${t.life * (isJumping?0.55:0.4)})`;
+    ctx.beginPath(); ctx.arc(t.x, t.y + (isJumping?0:8), isJumping? 2.5 : 3, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ============================================================
+// OBSTACLES — gumdrop buoys / lollipops / candy canes on the wave
+// ============================================================
+function snapAbsToDropSide(absX) {
+  const phase = (((absX % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  const dropMid = RAMP_FRAC + DROP_FRAC * 0.5, dropEnd = RAMP_FRAC + DROP_FRAC;
+  if (phase >= dropMid && phase < dropEnd) return absX;
+  const target = dropMid + Math.random() * (DROP_FRAC * 0.45);
+  const diff = ((target - phase) % 1 + 1) % 1;
+  return absX + diff * WAVE_PERIOD;
+}
+function snapAbsToPreRamp(absX) {
+  const phase = (((absX % WAVE_PERIOD) + WAVE_PERIOD) % WAVE_PERIOD) / WAVE_PERIOD;
+  const target = Math.random() * (RAMP_FRAC * 0.25);
+  const diff = ((target - phase) % 1 + 1) % 1;
+  return absX + diff * WAVE_PERIOD;
+}
+const ITEM_MIN_SPACING = 110;
+function tooClose(absX) {
+  for (const o of obstacles) if (Math.abs(o.absX - absX) < ITEM_MIN_SPACING) return true;
+  for (const c of collectibles) if (Math.abs(c.absX - absX) < ITEM_MIN_SPACING) return true;
+  return false;
+}
+// w/h are visual; sink = fraction sitting below waterline
+const OBSTACLE_TYPES = [
+  { kind:'gumdrop',   w:96,  h:108, weight:0.42, sink:0.30 },
+  { kind:'lollipop',  w:78,  h:150, weight:0.33, sink:0.12 },
+  { kind:'candycane', w:70,  h:210, weight:0.25, sink:0.10 },
+];
+const OBSTACLE_BY_KIND = Object.fromEntries(OBSTACLE_TYPES.map(t => [t.kind, t]));
+let lastObstacleWaveIndex = -Infinity;
+const GENERATION_AHEAD = 2500;
+let obstacleSpawnCursor = 0, collectibleSpawnCursor = 0;
+
+function tryCreateObstacleAt(rawAbsX) {
+  const preRamp = Math.random() < 0.10;
+  const absX = preRamp ? snapAbsToPreRamp(rawAbsX) : snapAbsToDropSide(rawAbsX);
+  const wi = Math.floor(absX / WAVE_PERIOD);
+  if (wi === lastObstacleWaveIndex + 1) return false;
+  if (tooClose(absX)) return false;
+  if (preRamp) for (const o of obstacles) if (Math.abs(o.absX - absX) < WAVE_PERIOD) return false;
+  const r = Math.random();
+  let acc = 0, def = OBSTACLE_TYPES[OBSTACLE_TYPES.length-1];
+  for (const t of OBSTACLE_TYPES) { acc += t.weight; if (r < acc) { def = t; break; } }
+  obstacles.push({
+    kind: def.kind, absX, worldX: absX - waveOffset,
+    imgW: def.w, imgH: def.h, hitW: def.w * 0.8, hitH: def.h * 0.8,
+    bobPhase: Math.random() * Math.PI * 2,
+    c1: randCandy(), c2: randCandy()
+  });
+  lastObstacleWaveIndex = wi;
+  return true;
+}
+function generateObstaclesAhead() {
+  const target = waveOffset + GENERATION_AHEAD;
+  let safety = 100;
+  while (obstacleSpawnCursor < target && safety-- > 0) {
+    obstacleSpawnCursor += 180 + Math.random() * 220;
+    tryCreateObstacleAt(obstacleSpawnCursor);
+  }
+}
+
+function drawObstacle(ob) {
+  const k = ob.kind;
+  if (k === 'gumdrop') {
+    const r = ob.imgW * 0.5;
+    const g = ctx.createLinearGradient(0, -r*2.0, 0, 0);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.22, ob.c1); g.addColorStop(1, shade(ob.c1, -0.28));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.bezierCurveTo(-r, -r*2.0, r, -r*2.0, r, 0);
+    ctx.closePath(); ctx.fill();
+    sugarSpeckle(0, -r*0.9, r*1.7, r*1.7, 16);
+    // gloss
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.ellipse(-r*0.32, -r*1.0, r*0.22, r*0.5, -0.2, 0, Math.PI*2); ctx.fill();
+  } else if (k === 'lollipop') {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -ob.imgH*0.62); ctx.stroke();
+    drawSwirlDisc(0, -ob.imgH*0.74, ob.imgW*0.5, ob.c1, ob.c2);
+  } else { // candycane
+    drawCandyCane(0, 0, ob.imgH);
+  }
+}
+
+// ============================================================
+// COLLECTIBLES — product gummy worms + sour sugar crystals
+// ============================================================
+const WORM_COLORS = [['#ff4d6d','#ffd23d'],['#5ec8ff','#b074ff'],['#7ed637','#ffe07a'],['#ff8dc7','#5ec8ff']];
+function tryCreateCollectibleAt(absX) {
+  if (tooClose(absX)) return false;
+  const isSugar = Math.random() < 0.26;
+  collectibles.push({
+    kind: isSugar ? 'sugar' : 'worm',
+    value: isSugar ? 100 : 50,
+    absX, worldX: absX - waveOffset,
+    heightAboveWave: H * 0.1 + Math.random() * H * 0.5,
+    collected: false, collectAnim: 0,
+    pulsePhase: Math.random() * Math.PI * 2,
+    colors: WORM_COLORS[Math.floor(Math.random()*WORM_COLORS.length)],
+    hitW: 86, hitH: isSugar ? 60 : 50
+  });
+  return true;
+}
+function generateCollectiblesAhead() {
+  const target = waveOffset + GENERATION_AHEAD;
+  let safety = 100;
+  while (collectibleSpawnCursor < target && safety-- > 0) {
+    collectibleSpawnCursor += 220 + Math.random() * 320;
+    tryCreateCollectibleAt(collectibleSpawnCursor);
+  }
+}
+function drawCollectible(col, x, y, scale) {
+  const bob = Math.sin(col.pulsePhase) * 4;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.scale(scale, scale);
+  if (col.kind === 'sugar') {
+    drawSugarCrystal(0, 0, 26, col.pulsePhase);
+  } else {
+    ctx.rotate(Math.sin(col.pulsePhase) * 0.12);
+    drawWorm(0, 0, 70, 11, 22, col.colors[0], col.colors[1], col.pulsePhase);
+  }
+  ctx.restore();
+}
+function drawSugarCrystal(cx, cy, r, ph) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ph * 0.6);
+  // glow
+  const g = ctx.createRadialGradient(0,0,2,0,0,r*2.2);
+  g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,r*2.2,0,Math.PI*2); ctx.fill();
+  // crystal cluster (a few cubes)
+  const cubes = [[0,0,1],[ -0.7,0.4,0.7],[0.75,0.35,0.65],[0.1,-0.8,0.6]];
+  for (const [dx,dy,sc] of cubes) {
+    const s = r*sc;
+    ctx.save(); ctx.translate(dx*r, dy*r); ctx.rotate(0.4);
+    const cg = ctx.createLinearGradient(-s,-s,s,s);
+    cg.addColorStop(0, '#ffffff'); cg.addColorStop(0.5, '#fff0a8'); cg.addColorStop(1, '#ffd24a');
+    ctx.fillStyle = cg;
+    roundRect(-s*0.5,-s*0.5,s,s,s*0.18); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+  }
+  // sparkle
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-r*0.2,-r*0.2,r*0.12,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// AIR OBSTACLES — candy wasps (sugar attracts 'em)
+// ============================================================
+let wasps = [], waspTimer = 0, waspWarnings = [];
+const WASP_LANES = [0.4, 0.62];
+const WASP_WARN_TIME = 1.6;
+function queueWasp() {
+  waspWarnings.push({ lane: WASP_LANES[Math.floor(Math.random()*WASP_LANES.length)], timeLeft: WASP_WARN_TIME });
+}
+const WASP_HIT = 60;
+function createWasp(lane) {
+  wasps.push({ worldX: W + 50 + Math.random()*150, y: H*lane, wing: Math.random()*Math.PI*2,
+    speed: 0.3 + Math.random()*0.4, hitW: WASP_HIT*0.7, hitH: WASP_HIT*0.7 });
+}
+function drawWasp(x, y, wing) {
+  ctx.save();
+  ctx.translate(x, y);
+  // wings
+  const flap = Math.abs(Math.sin(wing * 3)) * 0.8 + 0.2;
+  ctx.fillStyle = 'rgba(220,240,255,0.7)';
+  ctx.save(); ctx.scale(1, flap);
+  ctx.beginPath(); ctx.ellipse(-4, -16, 12, 7, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(10, -16, 12, 7, 0.5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  // striped body
+  const bg = ctx.createLinearGradient(0,-10,0,10);
+  bg.addColorStop(0,'#ffd23d'); bg.addColorStop(1,'#e0a020');
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.ellipse(0, 0, 18, 12, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2a1a08';
+  for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.ellipse(i*8, 0, 2.5, 11, 0, 0, Math.PI*2); ctx.fill(); }
+  // head + eyes
+  ctx.fillStyle = '#3a2a10';
+  ctx.beginPath(); ctx.arc(-16, -2, 7, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-18, -4, 2.4, 0, Math.PI*2); ctx.fill();
+  // stinger
+  ctx.fillStyle = '#3a2a10';
+  ctx.beginPath(); ctx.moveTo(18,0); ctx.lineTo(28, -3); ctx.lineTo(28, 3); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+function spawnParticles(x, y, count, color, sx, sy, life, grav) {
+  for (let i = 0; i < count; i++) particles.push({
+    x, y, vx: (Math.random()-0.5)*(sx||150), vy: -(Math.random()*(sy||150)+30),
+    life: life || (0.4+Math.random()*0.4), maxLife: life || 0.7,
+    color: color || '#ffd23d', r: 1.5+Math.random()*3, grav: grav!==undefined?grav:300,
+    shape: Math.random() < 0.4 ? 'rect' : 'dot'
+  });
+}
+function spawnSpray() {
+  if (isJumping) return;
+  const n = Math.floor(speed * 1.2);
+  for (let i = 0; i < n; i++) if (Math.random() < 0.3 * speed) {
+    const sx = surferX + (Math.random()-0.5)*20;
+    particles.push({ x: sx, y: getWaveY(sx)-2, vx: -30-Math.random()*40*speed,
+      vy: -(40+Math.random()*60*speed), life: 0.2+Math.random()*0.15, maxLife: 0.35,
+      color: Math.random()<0.5 ? 'rgba(255,255,255,0.8)' : (FLAVORS[flavor]||FLAVORS.rainbow).accent,
+      r: 1+Math.random()*2, grav: 200, shape:'dot' });
+  }
+}
+function drawParticles() {
+  particles.forEach(p => {
+    const a = Math.max(0, p.life/p.maxLife);
+    ctx.globalAlpha = a; ctx.fillStyle = p.color;
+    if (p.shape === 'rect') { ctx.fillRect(p.x, p.y, p.r*1.6*a, p.r*1.6*a); }
+    else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r*a, 0, Math.PI*2); ctx.fill(); }
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ============================================================
+// SPEED LINES + POPUPS
+// ============================================================
+function updateSpeedLines(dt) {
+  if (speed > 1.5) {
+    const c = Math.floor((speed-1.5)*3);
+    for (let i = 0; i < c; i++) if (Math.random() < 0.4) speedLines.push({
+      x: W+10, y: Math.random()*WAVE_BASELINE, len: 30+Math.random()*60*speed,
+      life: 0.2+Math.random()*0.2, maxLife: 0.3 });
+  }
+  speedLines.forEach(l => { l.x -= 800*speed*dt; l.life -= dt; });
+  speedLines = speedLines.filter(l => l.life > 0);
+}
+function drawSpeedLines() {
+  speedLines.forEach(l => {
+    ctx.strokeStyle = `rgba(255,255,255,${(l.life/l.maxLife)*0.22})`;
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x+l.len, l.y); ctx.stroke();
+  });
+}
+function createPopup(text, x, y, color) {
+  popups.push({ text, x, y, color: color || '#ffd23d', life: 1.2, maxLife: 1.2, size: 22 });
+}
+function drawPopups() {
+  popups.forEach(p => {
+    const t = 1 - p.life/p.maxLife, alpha = 1 - t, scale = 1 + t*0.5;
+    ctx.save();
+    ctx.translate(p.x, p.y - t*40); ctx.scale(scale, scale);
+    ctx.font = `800 ${p.size}px 'Baloo 2', sans-serif`; ctx.textAlign = 'center';
+    ctx.fillStyle = p.color; ctx.globalAlpha = alpha;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 14;
+    ctx.fillText(p.text, 0, 0);
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+  });
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+const keys = {};
+function isJumpKey(c) { return c === 'Space' || c === 'ArrowUp' || c === 'Tab'; }
+const RESTART_KEY_DELAY_MS = 2200;
+let gameOverAt = 0;
+
+window.addEventListener('keydown', e => {
+  if (isJumpKey(e.code)) e.preventDefault();
+  if (keys[e.code]) return;
+  keys[e.code] = true;
+  if (gameState === 'playing' && isJumpKey(e.code)) { jumpKeyHeld = true; attemptJump(); }
+  else if (gameState !== 'playing' && (e.code === 'Space' || e.code === 'Enter')) {
+    if (gameState === 'gameover' && performance.now() - gameOverAt < RESTART_KEY_DELAY_MS) return;
+    startGame();
+  }
+});
+window.addEventListener('keyup', e => {
+  keys[e.code] = false;
+  if (isJumpKey(e.code)) {
+    if (jumpKeyHeld && isJumping && surferVY < 0) surferVY *= JUMP_CUT;
+    jumpKeyHeld = false;
+  }
+});
+canvas.style.touchAction = 'none';
+canvas.addEventListener('pointerdown', e => {
+  if (gameState !== 'playing') return;
+  e.preventDefault(); jumpKeyHeld = true; attemptJump();
+});
+const endHold = () => { if (!jumpKeyHeld) return; if (isJumping && surferVY < 0) surferVY *= JUMP_CUT; jumpKeyHeld = false; };
+canvas.addEventListener('pointerup', endHold);
+canvas.addEventListener('pointercancel', endHold);
+canvas.addEventListener('pointerleave', endHold);
+
+function attemptJump() { if (!isJumping) doJump(); else if (!doubleJumpUsed) doDoubleJump(); }
+function doJump() {
+  const power = getJumpPower(surferX);
+  isJumping = true; doubleJumpUsed = false;
+  surferVY = -JUMP_VEL * power * 0.9;
+  const c = Math.floor(6 + 10*power);
+  spawnParticles(surferX, surferY+5, c, 'rgba(255,255,255,0.85)', 80+60*power, 70+50*power, 0.5, 200);
+  spawnParticles(surferX, surferY+5, Math.floor(4+6*power), (FLAVORS[flavor]||FLAVORS.rainbow).accent, 60+40*power, 50+40*power, 0.4, 250);
+  triggerShake(2 + 4*power);
+}
+function doDoubleJump() {
+  doubleJumpUsed = true;
+  const CEIL = 20;
+  const maxUp = Math.sqrt(2 * GRAVITY * Math.max(0, surferY - CEIL));
+  surferVY = Math.max(surferVY - JUMP_VEL, -maxUp);
+  spawnParticles(surferX, surferY+5, 10, 'rgba(255,255,255,0.9)', 100, 70, 0.4, 200);
+  spawnParticles(surferX, surferY+5, 6, '#ffd23d', 70, 50, 0.3, 250);
+  triggerShake(3);
+}
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function resetGame() {
+  score = 0; distance = 0; speed = 1.0; time = 0; bonusScore = 0; wormCount = 0;
+  waveOffset = 0; surferVY = 0; isJumping = false; doubleJumpUsed = false; jumpKeyHeld = false;
+  lastMilestone = 0; lastObstacleWaveIndex = -Infinity;
+  obstacleSpawnCursor = waveOffset + W; collectibleSpawnCursor = waveOffset + W;
+  obstacles = []; collectibles = []; particles = [];
+  wasps = []; waspTimer = 0; waspWarnings = [];
+  speedLines = []; surferTrail = []; popups = [];
+  nearMissTimer = 0; flashColor = null; flashTimer = 0; canJump = false; wriggle = 0;
+}
+function startGame() {
+  resetGame(); gameState = 'playing';
+  document.getElementById('overlay').classList.add('hidden');
+}
+function gameOver() {
+  gameState = 'gameover'; gameOverAt = performance.now();
+  flashColor = 'rgba(255, 70, 110, 0.4)'; flashTimer = 0.3;
+  triggerShake(20);
+  spawnParticles(surferX, surferY, 30, '#ff4d6d', 250, 200, 0.7, 300);
+  spawnParticles(surferX, surferY, 18, '#ffd23d', 200, 150, 0.5, 250);
+  const ov = document.getElementById('overlay');
+  ov.querySelector('.logo').textContent = 'SQUISHED!';
+  ov.querySelector('h2').textContent = 'Sour Wave Rider';
+  document.getElementById('finalScore').textContent = 'Score: ' + score;
+  document.getElementById('finalDist').textContent =
+    `Worms grabbed: ${wormCount}  •  Distance: ${Math.floor(distance)} m`;
+  document.getElementById('startBtn').textContent = 'RIDE AGAIN';
+  setTimeout(() => ov.classList.remove('hidden'), 600);
+}
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+// pickers
+const timeValueEl = document.getElementById('timeValue');
+function setTime(t){ timeOfDay = t; timeValueEl.textContent = t.toUpperCase(); }
+function cycleTime(d){ const i=TIMES.indexOf(timeOfDay); setTime(TIMES[(i+d+TIMES.length)%TIMES.length]); }
+document.getElementById('timePrev').addEventListener('click', () => cycleTime(-1));
+document.getElementById('timeNext').addEventListener('click', () => cycleTime(1));
+setTime(timeOfDay);
+
+const flavValueEl = document.getElementById('flavValue');
+function setFlavor(f){ flavor = f; flavValueEl.textContent = FLAVORS[f].name; }
+function cycleFlavor(d){ const i=FLAVOR_KEYS.indexOf(flavor); setFlavor(FLAVOR_KEYS[(i+d+FLAVOR_KEYS.length)%FLAVOR_KEYS.length]); }
+document.getElementById('flavPrev').addEventListener('click', () => cycleFlavor(-1));
+document.getElementById('flavNext').addEventListener('click', () => cycleFlavor(1));
+setFlavor(flavor);
+
+// ============================================================
+// UPDATE
+// ============================================================
+let lastTime = performance.now(), lastDt = 0.016;
+function update(now) {
+  lastDt = Math.min((now - lastTime)/1000, 0.05);
+  const dt = lastDt; lastTime = now;
+  if (gameState !== 'playing') return;
+
+  time += dt;
+  wriggle += dt * 10;
+  speed = 1.0 + time * 0.025;
+  const base = 300 * speed;
+  const scroll = isJumping ? base * 1.2 : base;
+  waveOffset += scroll * dt;
+  distance += scroll * dt * 0.1;
+  distantWaveOffset += scroll * 0.3 * dt;
+  surferX = SURFER_X;
+
+  clouds.forEach(c => { c.x -= scroll * c.speed * dt / W; if (c.x < -0.4) c.x += 1.8; });
+
+  canJump = true;
+  const waveY = getWaveY(surferX);
+  const onWaveY = waveY - 14;
+  if (isJumping) {
+    surferVY += GRAVITY * dt; surferY += surferVY * dt;
+    if (surferY >= onWaveY) {
+      surferY = onWaveY; surferVY = 0; isJumping = false; doubleJumpUsed = false;
+      spawnParticles(surferX, surferY+10, 10, 'rgba(255,255,255,0.7)', 100, 80, 0.4, 200);
+      triggerShake(3);
+    }
+  } else surferY = onWaveY;
+
+  const slope = getWaveSlope(surferX);
+  if (!isJumping) surferAngle = Math.atan2(-slope, 8);
+
+  surferTrail.push({ x: surferX, y: surferY, life: 1 });
+  surferTrail.forEach(t => t.life -= dt * 2.5);
+  surferTrail = surferTrail.filter(t => t.life > 0);
+
+  spawnSpray();
+  updateSpeedLines(dt);
+  generateObstaclesAhead();
+  generateCollectiblesAhead();
+
+  // obstacles
+  for (let i = obstacles.length-1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.worldX = ob.absX - waveOffset;
+    if (ob.worldX < -120) { obstacles.splice(i,1); continue; }
+    const ox = ob.worldX;
+    const sink = OBSTACLE_BY_KIND[ob.kind].sink;
+    const bob = Math.sin(time*2.4 + ob.bobPhase) * 8;
+    const oy = getWaveY(ox) + ob.imgH * sink + bob;
+    const centerY = oy - ob.imgH/2;
+    const dx = Math.abs(ox - surferX), dy = Math.abs(centerY - surferY);
+    if (dx < ob.hitW/2 && dy < ob.hitH/2) {
+      if (isJumping && surferY < oy - 20) continue;
+      gameOver(); return;
+    }
+    if (ox >= surferX - ob.hitW/2) {
+      const gap = Math.sqrt(dx*dx+dy*dy) - Math.sqrt((ob.hitW/2)**2 + (ob.hitH/2)**2);
+      if (ob.closestGap === undefined || gap < ob.closestGap) ob.closestGap = gap;
+    }
+    if (!ob.passed && ox < surferX - ob.hitW/2 - 5) {
+      ob.passed = true;
+      if (ob.closestGap !== undefined && ob.closestGap < 20 && nearMissTimer <= 0) {
+        bonusScore += 25; nearMissTimer = 0.8;
+        createPopup('SUGAR RUSH! +25', surferX, surferY-30, (FLAVORS[flavor]||FLAVORS.rainbow).accent);
+        spawnParticles(surferX, surferY, 6, '#ffd23d', 60, 40, 0.3, 100);
+      }
+    }
+  }
+  nearMissTimer -= dt;
+
+  // wasps
+  waspTimer -= dt;
+  if (waspTimer <= 0) {
+    if (wasps.length + waspWarnings.length < 2 && Math.random() < 0.8) queueWasp();
+    waspTimer = 2 + Math.random()*2;
+  }
+  for (let i = waspWarnings.length-1; i >= 0; i--) {
+    const w = waspWarnings[i]; w.timeLeft -= dt;
+    if (w.timeLeft <= 0) { createWasp(w.lane); waspWarnings.splice(i,1); }
+  }
+  for (let i = wasps.length-1; i >= 0; i--) {
+    const sg = wasps[i];
+    sg.worldX -= (scroll * sg.speed + 400) * dt;
+    sg.wing += dt * 5;
+    if (sg.worldX < -60) { wasps.splice(i,1); continue; }
+    const dx = Math.abs(sg.worldX - surferX), dy = Math.abs(sg.y - surferY);
+    if (dx < sg.hitW/2 && dy < sg.hitH/2) { gameOver(); return; }
+    if (sg.worldX >= surferX - sg.hitW/2) {
+      const gap = Math.sqrt(dx*dx+dy*dy) - Math.sqrt((sg.hitW/2)**2 + (sg.hitH/2)**2);
+      if (sg.closestGap === undefined || gap < sg.closestGap) sg.closestGap = gap;
+    }
+    if (!sg.passed && sg.worldX < surferX - sg.hitW/2 - 5) {
+      sg.passed = true;
+      if (sg.closestGap !== undefined && sg.closestGap < 20 && nearMissTimer <= 0) {
+        bonusScore += 25; nearMissTimer = 0.8;
+        createPopup('SUGAR RUSH! +25', surferX, surferY-30, (FLAVORS[flavor]||FLAVORS.rainbow).accent);
+        spawnParticles(surferX, surferY, 6, '#ffd23d', 60, 40, 0.3, 100);
+      }
+    }
+  }
+
+  // collectibles
+  for (let i = collectibles.length-1; i >= 0; i--) {
+    const col = collectibles[i];
+    col.worldX = col.absX - waveOffset;
+    col.pulsePhase += dt * 4;
+    if (col.worldX < -80) { collectibles.splice(i,1); continue; }
+    if (col.collected) {
+      col.collectAnim += dt * 4;
+      if (col.collectAnim > 1) collectibles.splice(i,1);
+      continue;
+    }
+    const cx = col.worldX, cy = getWaveY(cx) - col.heightAboveWave;
+    if (Math.abs(cx - surferX) < col.hitW/2 && Math.abs(cy - surferY) < col.hitH/2) {
+      col.collected = true; col.collectAnim = 0; bonusScore += col.value;
+      if (col.kind === 'worm') { wormCount++; document.getElementById('wormVal').textContent = wormCount; }
+      const pc = col.kind === 'sugar' ? '#ffd23d' : (FLAVORS[flavor]||FLAVORS.rainbow).accent;
+      createPopup('+' + col.value, cx, cy-10, pc);
+      spawnParticles(cx, cy, 12, pc, 100, 80, 0.5, 150);
+      if (col.kind === 'worm') spawnParticles(cx, cy, 6, col.colors[1], 90, 70, 0.5, 150);
+      triggerShake(col.kind === 'sugar' ? 5 : 3);
+    }
+  }
+
+  particles.forEach(p => { p.vy += p.grav*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt; });
+  particles = particles.filter(p => p.life > 0);
+  popups.forEach(p => p.life -= dt);
+  popups = popups.filter(p => p.life > 0);
+  if (flashTimer > 0) flashTimer -= dt;
+
+  const milestones = [100,200,500,750,1000,1500,2000,3000,5000];
+  const d = Math.floor(distance);
+  for (const m of milestones) if (d >= m && lastMilestone < m) {
+    lastMilestone = m;
+    createPopup(`${m}m!`, W/2, H/2-50, '#6EE7FF');
+    spawnParticles(W/2, H/2, 20, '#ff8dc7', 200, 150, 0.8, 100);
+    spawnParticles(W/2, H/2, 15, '#ffd23d', 180, 120, 0.6, 120);
+    triggerShake(6);
+  }
+
+  score = Math.floor(distance) + bonusScore;
+  document.getElementById('scoreVal').textContent = score;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const shake = getShakeOffset();
+  ctx.setTransform(uiScale, 0, 0, uiScale, 0, 0);
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+  ctx.clearRect(-10, -10, W+20, H+20);
+
+  drawSky();
+  drawGummyBear();
+  drawStars();
+  drawClouds();
+  if (timeOfDay === 'sunset' || timeOfDay === 'night') drawMoon(); else drawSun();
+  drawBeach(gameState === 'playing' ? 300*speed : 30, lastDt);
+
+  drawSpeedLines();
+  drawWave();
+  drawSurferTrail();
+
+  // obstacles on wave
+  obstacles.forEach(ob => {
+    const ox = ob.worldX;
+    const sink = OBSTACLE_BY_KIND[ob.kind].sink;
+    const bob = Math.sin(time*2.4 + ob.bobPhase) * 8;
+    const oy = getWaveY(ox) + ob.imgH * sink + bob;
+    const tilt = Math.sin(time*2.4 + ob.bobPhase) * 0.08;
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.rotate(tilt);
+    drawObstacle(ob);
+    ctx.restore();
+  });
+
+  // wasps
+  wasps.forEach(sg => drawWasp(sg.worldX, sg.y, sg.wing));
+  // wasp warnings (flashing at right edge)
+  waspWarnings.forEach(w => {
+    const flash = (Math.sin(time*14)+1)/2;
+    if (flash < 0.3) return;
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.45*flash;
+    ctx.translate(W - 50, H*w.lane);
+    // warning chevrons
+    ctx.fillStyle = '#ffd23d';
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      ctx.moveTo(k*14, -12); ctx.lineTo(k*14+12, 0); ctx.lineTo(k*14, 12);
+      ctx.lineTo(k*14+5, 0); ctx.closePath(); ctx.fill();
+    }
+    drawWasp(-18, 0, time*6);
+    ctx.restore();
+  });
+
+  // collectibles
+  collectibles.forEach(col => {
+    const cx = col.worldX, cy = getWaveY(cx) - col.heightAboveWave;
+    if (col.collected) {
+      const s = 1 + col.collectAnim*2, a = 1 - col.collectAnim;
+      ctx.globalAlpha = a; drawCollectible(col, cx, cy, s); ctx.globalAlpha = 1;
+    } else drawCollectible(col, cx, cy, 1);
+  });
+
+  drawJumpIndicator();
+  drawSurfer(surferX, surferY, surferAngle);
+  drawParticles();
+  drawPopups();
+
+  if (flashTimer > 0 && flashColor) {
+    ctx.fillStyle = flashColor; ctx.globalAlpha = flashTimer/0.3;
+    ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function gameLoop(now) { requestAnimationFrame(gameLoop); update(now); render(); }
+lastTime = performance.now();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
